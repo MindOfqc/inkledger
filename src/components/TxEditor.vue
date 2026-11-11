@@ -4,6 +4,8 @@ import { store, addTx, updateTx, removeTx, showToast, allTags } from '../store.j
 import { fmtMoney, toLocalISO } from '../lib/format.js'
 import { applyRules } from '../lib/rules.js'
 import DataIcon from './DataIcon.vue'
+import AppIcon from './AppIcon.vue'
+import CatArt from './CatArt.vue'
 
 const props = defineProps({ init: Object })
 const emit = defineEmits(['close'])
@@ -111,10 +113,12 @@ function del() {
   <Teleport to="body">
     <div class="overlay" @click.self="emit('close')">
       <div class="sheet">
+        <span class="sheet__kicker kicker"><CatArt variant="reading" :size="30" class="sheet__cat" />投稿单 · CONTRIBUTION</span>
         <h3 class="sheet__title">
-          {{ isNew ? '记一笔' : '编辑账目' }}
-          <button class="sheet__close" @click="emit('close')">✕</button>
+          {{ isNew ? '记一笔' : '改稿 · 编辑账目' }}
+          <button class="sheet__close" aria-label="关闭" @click="emit('close')"><AppIcon name="close" :size="18" /></button>
         </h3>
+        <p class="sheet__hint pencil-note">把今天的小事发到编辑部，金额可以直接写算式（如 12+8）。</p>
 
         <!-- 类型 -->
         <div class="seg">
@@ -127,11 +131,12 @@ function del() {
 
         <!-- 金额 -->
         <div class="amount-box" :class="{ 'amount-box--in': form.type === 'income' }">
-          <span class="amount-box__currency serif">{{ form.type === 'income' ? '＋' : form.type === 'transfer' ? '⇄' : '－' }} ¥</span>
+          <span class="amount-box__currency serif">¥</span>
           <input
             v-model="form.amount" class="amount-box__input num" type="text" inputmode="decimal"
             placeholder="0.00 或算式如 12+8" autofocus @blur="normalizeAmount"
           />
+          <span class="amount-box__kind">{{ form.type === 'income' ? '收入' : form.type === 'transfer' ? '转账' : '支出' }}</span>
         </div>
 
         <!-- 分类 -->
@@ -141,7 +146,7 @@ function del() {
             class="catgrid__item" :class="{ 'catgrid__item--on': form.categoryId === c.id }"
             @click="form.categoryId = c.id"
           >
-            <span class="catgrid__icon"><DataIcon :icon="c.icon" :size="20" /></span>
+            <span class="catgrid__icon"><DataIcon :icon="c.icon" :size="21" /></span>
             <span>{{ c.name }}</span>
           </button>
         </div>
@@ -173,13 +178,15 @@ function del() {
 
         <label class="field" style="margin-top: 12px">
           <span class="field__label">备注</span>
-          <input v-model="form.note" class="input" placeholder="选填" />
+          <input v-model="form.note" class="input" placeholder="选填，给这条新闻加一句编后语" />
         </label>
 
         <label class="field" style="margin-top: 12px">
           <span class="field__label">标签</span>
           <div class="tags-row">
-            <span v-for="t in form.tags" :key="t" class="tag" @click="form.tags = form.tags.filter((x) => x !== t)">#{{ t }} ✕</span>
+            <button v-for="t in form.tags" :key="t" type="button" class="tag tag--btn" @click="form.tags = form.tags.filter((x) => x !== t)">
+              #{{ t }} <AppIcon name="close" :size="10" />
+            </button>
             <input v-model="tagInput" class="input tags-input" placeholder="回车添加" list="tag-suggestions" @keydown.enter.prevent="addTag" />
             <datalist id="tag-suggestions">
               <option v-for="s in tagSuggestions" :key="s" :value="s" />
@@ -188,10 +195,10 @@ function del() {
         </label>
 
         <div class="actions">
-          <button v-if="!isNew" class="btn btn--danger" @click="del">删除</button>
+          <button v-if="!isNew" class="btn btn--danger btn--ico" @click="del"><AppIcon name="trash" :size="15" />删除</button>
           <span style="flex: 1"></span>
           <button class="btn" @click="emit('close')">取消</button>
-          <button class="btn btn--gold" @click="save">保存</button>
+          <button class="btn btn--gold btn--ico" @click="save"><AppIcon name="check" :size="15" />{{ isNew ? '投稿入账' : '保存改稿' }}</button>
         </div>
       </div>
     </div>
@@ -199,27 +206,31 @@ function del() {
 </template>
 
 <style scoped>
+.sheet__kicker { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 4px; padding-right: 40px; }
+.sheet__cat { transform: rotate(-4deg); }
+.sheet__hint { margin: -8px 0 14px; font-size: 12px; }
 .seg {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
-  background: var(--card-2); border-radius: var(--radius-s); padding: 4px; margin-bottom: 16px;
+  background: var(--card-2); border: 1px solid var(--line); border-radius: var(--radius-s); padding: 4px; margin-bottom: 16px;
 }
 .seg__item {
   border: none; background: none; color: var(--text-dim); padding: 8px 0;
-  border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 14px;
+  border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 14px;
   transition: all 0.15s;
 }
-.seg__item--on { background: var(--gold-soft); color: var(--gold); font-weight: 600; }
+.seg__item--on { background: var(--gold-soft); color: var(--accent-ink); font-weight: 700; box-shadow: inset 0 0 0 1px var(--gold-line); }
 
 .amount-box {
   display: flex; align-items: baseline; gap: 6px;
-  border-bottom: 1px solid var(--gold-line); padding: 4px 4px 12px; margin-bottom: 16px;
+  border-bottom: 3px double var(--gold-line); padding: 4px 4px 12px; margin-bottom: 16px;
 }
-.amount-box__currency { color: var(--gold); font-size: 22px; }
+.amount-box__currency { color: var(--accent-ink); font-size: 24px; font-weight: 700; }
 .amount-box__input {
   flex: 1; background: none; border: none; outline: none; color: var(--text);
-  font-size: 34px; font-weight: 600; min-width: 0;
+  font-size: 34px; font-weight: 700; min-width: 0; font-family: var(--font-serif);
 }
-.amount-box--in .amount-box__currency { color: var(--gold); }
+.amount-box__kind { font-size: 12px; color: var(--text-faint); letter-spacing: 2px; }
+.amount-box--in .amount-box__currency { color: var(--ink-green); }
 
 .catgrid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;
@@ -232,17 +243,18 @@ function del() {
   color: var(--text-dim); font-size: 12px; cursor: pointer; font-family: inherit;
   transition: all 0.12s;
 }
-.catgrid__item:hover { color: var(--text); }
-.catgrid__item--on { border-color: var(--gold-line); background: var(--gold-soft); color: var(--gold); }
-.catgrid__icon { font-size: 20px; }
+.catgrid__item:hover { color: var(--text); border-color: var(--line-strong); transform: translateY(-1px); }
+.catgrid__item--on { border-color: var(--gold-line); background: var(--gold-soft); color: var(--accent-ink); font-weight: 600; }
+.catgrid__icon { font-size: 20px; display: flex; }
 
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field__label { font-size: 12px; color: var(--text-dim); letter-spacing: 1px; }
 
 .tags-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.tags-row .tag { cursor: pointer; }
+.tag--btn { cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 4px; }
+.tag--btn:hover { border-color: var(--ink-red); color: var(--ink-red); }
 .tags-input { flex: 1; min-width: 120px; width: auto; }
 
-.actions { display: flex; gap: 10px; margin-top: 20px; }
+.actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
 </style>

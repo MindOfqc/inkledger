@@ -1,8 +1,8 @@
 {
   "name": "inkledger",
   "private": true,
-  "version": "1.6.0",
-  "description": "墨账 InkLedger —— 纯静态、数据自持的个人记账 PWA，支持微信/支付宝账单导入与 GitHub 同步",
+  "version": "1.8.0",
+  "description": "爪爪日报 PawPress —— 卡通小猫 × 复古报刊风格的纯静态、数据自持个人记账 PWA，支持微信/支付宝账单导入与 GitHub 同步",
   "type": "module",
   "scripts": {
     "dev": "vite",

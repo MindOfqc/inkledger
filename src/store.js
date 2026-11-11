@@ -79,7 +79,7 @@ function defaultState() {
     goals: [],
     rules: [],
     settings: {
-      theme: 'dark',
+      theme: 'light',
       github: { token: '', login: '', repo: '' },
       lastSync: null
     }

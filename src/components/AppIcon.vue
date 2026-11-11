@@ -1,6 +1,7 @@
 <script setup>
 /**
- * 线性图标:统一 24×24 描边风格(2px 圆角描边),颜色跟随 currentColor
+ * 手绘多彩图标：24×24 贴纸风，彩色填充 + 深棕描边。
+ * 颜色固定在注册表元素上（presentation attribute 不支持 var()），跨主题保持一致。
  */
 import { computed, h } from 'vue'
 import { ICONS } from '../lib/icons.js'
@@ -8,7 +9,7 @@ import { ICONS } from '../lib/icons.js'
 const props = defineProps({
   name: { type: String, required: true },
   size: { type: [Number, String], default: 20 },
-  strokeWidth: { type: [Number, String], default: 2 }
+  strokeWidth: { type: [Number, String], default: 1.5 }
 })
 
 const vnode = computed(() =>
@@ -18,8 +19,6 @@ const vnode = computed(() =>
     height: props.size,
     viewBox: '0 0 24 24',
     fill: 'none',
-    stroke: 'currentColor',
-    'stroke-width': props.strokeWidth,
     'stroke-linecap': 'round',
     'stroke-linejoin': 'round',
     'aria-hidden': 'true'

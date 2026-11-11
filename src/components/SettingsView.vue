@@ -13,6 +13,7 @@ import { decodeBuffer, buildTxCsv } from '../lib/csv.js'
 import { CATEGORY_ICON_KEYS } from '../lib/icons.js'
 import AppIcon from './AppIcon.vue'
 import DataIcon from './DataIcon.vue'
+import CatArt from './CatArt.vue'
 
 /* —— 主题 —— */
 function setTheme(t) {
@@ -223,24 +224,29 @@ function doClear() {
 
 <template>
   <header class="head">
-    <h1 class="head__title serif">设置</h1>
+    <div class="head__text">
+      <span class="kicker">编辑部 · NEWSROOM</span>
+      <h1 class="head__title serif">编辑部设置</h1>
+      <p class="head__note pencil-note">投稿渠道、栏目预算与印刷时段，都在这里打理。</p>
+    </div>
+    <CatArt variant="wave" :size="84" class="head__cat" />
   </header>
 
   <!-- 账单导入 -->
-  <div class="sec-title">微信 / 支付宝账单导入</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="mail" :size="16" />账单导入 · 微信 / 支付宝</div>
   <section class="card">
     <p class="hint">
-      在微信「我 → 服务 → 钱包 → 账单 → 常见问题 → 下载账单」中选择「用于个人对账」，收到邮件后下载 CSV 上传至此；
+      在微信「我 → 服务 → 钱包 → 账单 → 常见问题 → 下载账单」中选择「用于个人对账」，新版 xlsx 直接上传，旧版邮件 CSV 解压后上传；
       支付宝在「我的 → 账单 → ... — 开具交易流水证明 / 对账单」导出。导入会自动识别来源账户、按关键词归类，并跳过重复账目。
     </p>
-    <label class="btn btn--gold upload">
-      {{ importing ? '解析中…' : '选择账单 CSV 文件' }}
-      <input type="file" accept=".csv,text/csv" :disabled="importing" @change="onBillFile" hidden />
+    <label class="btn btn--gold btn--ico upload">
+      <AppIcon name="upload" :size="16" />{{ importing ? '解析中…' : '选择账单文件（CSV / xlsx）' }}
+      <input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" :disabled="importing" @change="onBillFile" hidden />
     </label>
   </section>
 
   <!-- GitHub 同步 -->
-  <div class="sec-title">GitHub 同步</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="github" :size="16" />GitHub 同步 · 云端通讯社</div>
   <section class="card">
     <p class="hint">
       账本数据以一个 JSON 文件存放在<strong>你自己的私有仓库</strong>中，本站不保存任何数据。
@@ -267,7 +273,7 @@ function doClear() {
   </section>
 
   <!-- 账户管理 -->
-  <div class="sec-title">账户（消费来源）</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="wallet" :size="16" />账户 · 消费来源</div>
   <section class="card">
     <div v-for="a in store.accounts" :key="a.id" class="row-line">
       <span class="row-line__icon"><DataIcon :icon="ACCOUNT_META[a.type]?.icon || ':acc-other'" :size="18" /></span>
@@ -277,11 +283,11 @@ function doClear() {
       </span>
       <button class="btn btn--ghost btn--sm" @click="accForm = { ...a }">编辑</button>
     </div>
-    <button class="btn upload-block" @click="newAccount">＋ 新增账户</button>
+    <button class="btn btn--ico upload-block" @click="newAccount"><AppIcon name="plus" :size="15" />新增账户</button>
   </section>
 
   <!-- 分类管理 -->
-  <div class="sec-title">分类</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="tag" :size="16" />分类栏目</div>
   <section class="card">
     <div class="seg">
       <button class="seg__item" :class="{ 'seg__item--on': catKind === 'expense' }" @click="catKind = 'expense'">支出</button>
@@ -295,11 +301,11 @@ function doClear() {
       </span>
       <button class="btn btn--ghost btn--sm" @click="catForm = { ...c, keywords: [...(c.keywords || [])] }">编辑</button>
     </div>
-    <button class="btn upload-block" @click="newCategory">＋ 新增分类</button>
+    <button class="btn btn--ico upload-block" @click="newCategory"><AppIcon name="plus" :size="15" />新增分类</button>
   </section>
 
   <!-- 自动归类规则 -->
-  <div class="sec-title">自动归类规则</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="check" :size="16" />自动归类规则 · 分拣台</div>
   <section class="card">
     <p class="hint">按顺序匹配商户/商品关键词,命中即归入指定分类,<strong>优先于分类自带关键词</strong>;账单导入与手动记账均生效。</p>
     <div class="row wrap rule-kinds">
@@ -317,11 +323,11 @@ function doClear() {
       >{{ r.enabled ? '已启用' : '已停用' }}</button>
       <button class="btn btn--ghost btn--sm" @click="editRule(r)">编辑</button>
     </div>
-    <button class="btn upload-block" @click="newRule">＋ 新增规则</button>
+    <button class="btn btn--ico upload-block" @click="newRule"><AppIcon name="plus" :size="15" />新增规则</button>
   </section>
 
   <!-- 预算管理 -->
-  <div class="sec-title">月度预算</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="fish" :size="16" />月度预算 · 口粮额度</div>
   <section class="card">
     <p class="hint">为支出分类设置每月额度，首页与统计会展示执行进度；留空或 0 表示不设预算。</p>
     <div v-for="c in store.categories.filter((c) => c.kind === 'expense')" :key="'b-' + c.id" class="row-line row-line--budget">
@@ -349,7 +355,7 @@ function doClear() {
   </section>
 
   <!-- 周期账单 -->
-  <div class="sec-title">周期账单 / 订阅</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="calendar" :size="16" />周期账单 · 订阅公告</div>
   <section class="card">
     <p class="hint">房租、会员、话费等固定扣费:到期会显示在首页「近期账单」,点「缴账」一键入账并自动顺延下期。</p>
     <div v-for="r in store.recurring" :key="r.id" class="row-line row-line--rec">
@@ -362,11 +368,11 @@ function doClear() {
       </span>
       <button class="btn btn--ghost btn--sm" @click="recForm = { ...r }">编辑</button>
     </div>
-    <button class="btn upload-block" @click="newRecurring">＋ 新增周期账单</button>
+    <button class="btn btn--ico upload-block" @click="newRecurring"><AppIcon name="plus" :size="15" />新增周期账单</button>
   </section>
 
   <!-- 储蓄目标 -->
-  <div class="sec-title">储蓄目标</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="piggy" :size="16" />储蓄目标 · 猫罐头基金</div>
   <section class="card">
     <p class="hint">存钱罐式进度追踪(如旅行基金、新手机):存入只累计目标进度,<strong>不影响账户余额与总资产</strong>。目标进度不参与多端叠加合并,多端使用时请以一端为准。</p>
     <div v-for="g in store.goals" :key="g.id" class="row-line row-line--rec">
@@ -376,39 +382,40 @@ function doClear() {
       </span>
       <button class="btn btn--ghost btn--sm" @click="goalForm = { ...g, deadline: g.deadline ? g.deadline.slice(0, 7) : '' }">编辑</button>
     </div>
-    <button class="btn upload-block" @click="newGoal">＋ 新增目标</button>
+    <button class="btn btn--ico upload-block" @click="newGoal"><AppIcon name="plus" :size="15" />新增目标</button>
   </section>
 
   <!-- 数据管理 -->
-  <div class="sec-title">数据</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="ledger" :size="16" />数据档案室</div>
   <section class="card">
     <div class="row wrap">
-      <button class="btn" @click="downloadExport">导出备份 JSON</button>
-      <button class="btn" @click="downloadTxCsv">导出账目 CSV</button>
-      <label class="btn">导入备份
+      <button class="btn btn--ico" @click="downloadExport"><AppIcon name="download" :size="15" />导出备份 JSON</button>
+      <button class="btn btn--ico" @click="downloadTxCsv"><AppIcon name="download" :size="15" />导出账目 CSV</button>
+      <label class="btn btn--ico"> <AppIcon name="upload" :size="15" />导入备份
         <input type="file" accept=".json" @change="onBackupFile" hidden />
       </label>
-      <button class="btn" @click="loadSample">载入示例数据</button>
-      <button class="btn btn--danger" @click="doClear">清空账目</button>
+      <button class="btn btn--ico" @click="loadSample"><AppIcon name="eye" :size="15" />载入示例数据</button>
+      <button class="btn btn--danger btn--ico" @click="doClear"><AppIcon name="trash" :size="15" />清空账目</button>
     </div>
     <p class="hint">数据保存在浏览器 localStorage，清除浏览器数据前请先同步或导出备份。</p>
   </section>
 
   <!-- 外观 -->
-  <div class="sec-title">外观</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="sun" :size="16" />外观 · 印刷时段</div>
   <section class="card row">
-    <button class="btn btn--ico" :class="{ 'btn--on': store.settings.theme === 'dark' }" @click="setTheme('dark')"><AppIcon name="moon" :size="15" /> 夜墨</button>
-    <button class="btn btn--ico" :class="{ 'btn--on': store.settings.theme === 'light' }" @click="setTheme('light')"><AppIcon name="sun" :size="15" /> 宣纸</button>
+    <button class="btn btn--ico" :class="{ 'btn--on': store.settings.theme === 'dark' }" @click="setTheme('dark')"><AppIcon name="moon" :size="15" />夜班</button>
+    <button class="btn btn--ico" :class="{ 'btn--on': store.settings.theme === 'light' }" @click="setTheme('light')"><AppIcon name="sun" :size="15" />日刊</button>
+    <span class="pencil-note appearance-note">日刊是米白旧报纸，夜班是编辑部的台灯。</span>
   </section>
 
-  <p class="about serif">墨账 InkLedger · v1.6 · 静态部署 · 数据自持</p>
+  <p class="about serif">爪爪日报 PawPress · v1.8.0 · 猫咪编辑部出品 · 数据自持</p>
 
   <!-- 账户编辑弹层 -->
   <Teleport to="body">
     <div v-if="accForm" class="overlay" @click.self="accForm = null">
       <div class="sheet">
         <h3 class="sheet__title">{{ accForm.id ? '编辑账户' : '新增账户' }}
-          <button class="sheet__close" @click="accForm = null">✕</button></h3>
+          <button class="sheet__close" aria-label="关闭" @click="accForm = null"><AppIcon name="close" :size="18" /></button></h3>
         <label class="field"><span class="field__label">名称</span>
           <input v-model="accForm.name" class="input" placeholder="如：招商银行储蓄卡(1234)" /></label>
         <label class="field" style="margin-top: 12px"><span class="field__label">类型</span>
@@ -434,7 +441,7 @@ function doClear() {
     <div v-if="ruleForm" class="overlay" @click.self="ruleForm = null">
       <div class="sheet">
         <h3 class="sheet__title">{{ ruleForm.id ? '编辑规则' : '新增规则' }}
-          <button class="sheet__close" @click="ruleForm = null">✕</button></h3>
+          <button class="sheet__close" aria-label="关闭" @click="ruleForm = null"><AppIcon name="close" :size="18" /></button></h3>
         <label class="field"><span class="field__label">匹配关键词(商户/商品包含即命中)</span>
           <input v-model="ruleForm.match" class="input" placeholder="如：美团 / 滴滴 / Steam" /></label>
         <label class="field" style="margin-top: 12px"><span class="field__label">归入分类</span>
@@ -458,7 +465,7 @@ function doClear() {
     <div v-if="goalForm" class="overlay" @click.self="goalForm = null">
       <div class="sheet">
         <h3 class="sheet__title">{{ goalForm.id ? '编辑目标' : '新增目标' }}
-          <button class="sheet__close" @click="goalForm = null">✕</button></h3>
+          <button class="sheet__close" aria-label="关闭" @click="goalForm = null"><AppIcon name="close" :size="18" /></button></h3>
         <div class="row">
           <label class="field" style="flex: 1"><span class="field__label">名称</span>
             <input v-model="goalForm.name" class="input" placeholder="如：旅行基金" /></label>
@@ -488,7 +495,7 @@ function doClear() {
     <div v-if="recForm" class="overlay" @click.self="recForm = null">
       <div class="sheet">
         <h3 class="sheet__title">{{ recForm.id ? '编辑周期账单' : '新增周期账单' }}
-          <button class="sheet__close" @click="recForm = null">✕</button></h3>
+          <button class="sheet__close" aria-label="关闭" @click="recForm = null"><AppIcon name="close" :size="18" /></button></h3>
         <div class="row">
           <label class="field" style="flex: 1"><span class="field__label">名称</span>
             <input v-model="recForm.name" class="input" placeholder="如：视频会员 / 房租" /></label>
@@ -533,7 +540,7 @@ function doClear() {
     <div v-if="catForm" class="overlay" @click.self="catForm = null">
       <div class="sheet">
         <h3 class="sheet__title">{{ catForm.id ? '编辑分类' : '新增分类' }}
-          <button class="sheet__close" @click="catForm = null">✕</button></h3>
+          <button class="sheet__close" aria-label="关闭" @click="catForm = null"><AppIcon name="close" :size="18" /></button></h3>
         <div class="row">
           <label class="field" style="flex: 1"><span class="field__label">名称</span>
             <input v-model="catForm.name" class="input" placeholder="如：宠物" /></label>
@@ -550,12 +557,12 @@ function doClear() {
             ><AppIcon :name="k" :size="18" /></button>
           </div>
           <small v-if="!CATEGORY_ICON_KEYS.some((k) => catForm.icon === ':' + k)" class="icon-picker__hint">
-            当前为自定义图标 {{ catForm.icon }},从上方选择可替换为线性图标
+            当前为自定义图标 {{ catForm.icon }}，从上方选择可替换为手绘图标
           </small>
         </div>
         <label class="field" style="margin-top: 12px"><span class="field__label">自动归类关键词（导入账单时按商户/商品匹配）</span>
           <div class="tags-row">
-            <span v-for="k in catForm.keywords" :key="k" class="tag" @click="catForm.keywords = catForm.keywords.filter((x) => x !== k)">{{ k }} ✕</span>
+            <button v-for="k in catForm.keywords" :key="k" type="button" class="tag tag--btn" @click="catForm.keywords = catForm.keywords.filter((x) => x !== k)">{{ k }} <AppIcon name="close" :size="10" /></button>
             <input v-model="catKeywordInput" class="input tags-input" placeholder="回车添加，如：盒马" @keydown.enter.prevent="addCatKeyword" />
           </div></label>
         <div class="row row--end" style="margin-top: 18px">
@@ -572,7 +579,15 @@ function doClear() {
 </template>
 
 <style scoped>
-.head__title { font-size: 26px; letter-spacing: 8px; margin: 0 0 14px; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 6px; }
+.head__text { min-width: 0; }
+.head__title { font-size: 26px; letter-spacing: 8px; margin: 2px 0 6px; }
+.head__note { font-size: 12px; margin: 0; }
+.head__cat { flex: none; align-self: flex-end; transform: rotate(3deg); }
+@media (max-width: 480px) { .head__cat { display: none; } }
+.sec-title--ico::before { content: none; }
+.sec-title--ico .app-icon { flex: none; }
+.appearance-note { font-size: 12px; margin-left: 4px; }
 .hint { color: var(--text-dim); font-size: 13px; line-height: 1.7; margin: 0 0 14px; }
 .hint strong { color: var(--gold); }
 .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
@@ -621,7 +636,8 @@ function doClear() {
 .seg__item--on { background: var(--gold-soft); color: var(--gold); font-weight: 600; }
 
 .tags-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.tags-row .tag { cursor: pointer; }
+.tags-row .tag { cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-family: inherit; }
+.tags-row .tag:hover { border-color: var(--ink-red); color: var(--ink-red); }
 .tags-input { flex: 1; min-width: 130px; width: auto; }
 
 .icon-picker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }

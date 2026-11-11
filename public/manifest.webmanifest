@@ -1,20 +1,14 @@
 {
-  "name": "墨账 InkLedger",
-  "short_name": "墨账",
-  "description": "数据自持的个人记账 PWA，支持微信/支付宝账单导入与 GitHub 同步",
+  "name": "爪爪日报 PawPress",
+  "short_name": "爪爪日报",
+  "description": "卡通小猫 × 复古报刊风格的数据自持记账 PWA，支持微信/支付宝账单导入与 GitHub 同步",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#101014",
-  "theme_color": "#101014",
+  "background_color": "#f4ecd9",
+  "theme_color": "#f4ecd9",
   "icons": [
-    {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
     {
       "src": "./icon-192.png",
       "sizes": "192x192",

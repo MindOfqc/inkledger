@@ -1,6 +1,6 @@
-/* 墨账 InkLedger Service Worker —— 离线可用的静态外壳缓存 */
-const VERSION = 'inkledger-v1.6'
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './favicon.svg']
+/* 爪爪日报 PawPress Service Worker —— 离线可用的静态外壳缓存 */
+const VERSION = 'pawpress-v1.8.0'
+const SHELL = ['./', './index.html', './manifest.webmanifest', './favicon.png', './icon-192.png', './icon-512.png']
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()))

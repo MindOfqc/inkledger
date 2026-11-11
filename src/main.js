@@ -1,9 +1,14 @@
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import App from './App.vue'
 import { store, loadSample } from './store.js'
 import './styles/main.css'
 
-document.documentElement.dataset.theme = store.settings.theme || 'dark'
+// 主题与 PWA 地址栏色同步：默认日刊（米白旧报纸），夜班为暖棕编辑部
+watch(() => store.settings.theme, (t) => {
+  const theme = t === 'dark' ? 'dark' : 'light'
+  document.documentElement.dataset.theme = theme
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#241c11' : '#f4ecd9')
+}, { immediate: true })
 
 // 演示模式：地址带 #demo 且无数据时载入示例（README 在线体验入口）
 if (location.hash.includes('demo') && store.txs.length === 0) loadSample()

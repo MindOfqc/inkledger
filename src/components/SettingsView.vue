@@ -272,9 +272,9 @@ async function delRecurring() {
 <template>
   <header class="head">
     <div class="head__text">
-      <span class="kicker">编辑部 · NEWSROOM</span>
-      <h1 class="head__title serif">编辑部设置</h1>
-      <p class="head__note pencil-note">投稿渠道、栏目预算与印刷时段，都在这里打理。</p>
+      <span class="kicker">账本设置 · SETTINGS</span>
+      <h1 class="head__title serif">账本设置</h1>
+      <p class="head__note pencil-note">账户、分类、预算、账单导入与同步，都在这里打理。</p>
     </div>
     <CatArt variant="wave" :size="84" class="head__cat" />
   </header>
@@ -293,7 +293,7 @@ async function delRecurring() {
   </section>
 
   <!-- GitHub 同步 -->
-  <div class="sec-title sec-title--ico"><AppIcon name="github" :size="16" />GitHub 同步 · 云端通讯社</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="github" :size="16" />GitHub 同步 · 私有数据仓库</div>
   <section class="card">
     <p class="hint">
       账本数据以一个 JSON 文件存放在<strong>你自己的私有仓库</strong>中，本站不保存任何数据。
@@ -334,7 +334,7 @@ async function delRecurring() {
   </section>
 
   <!-- 分类管理 -->
-  <div class="sec-title sec-title--ico"><AppIcon name="tag" :size="16" />分类栏目</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="tag" :size="16" />收支分类</div>
   <section class="card">
     <div class="seg">
       <button class="seg__item" :class="{ 'seg__item--on': catKind === 'expense' }" @click="catKind = 'expense'">支出</button>
@@ -352,7 +352,7 @@ async function delRecurring() {
   </section>
 
   <!-- 自动归类规则 -->
-  <div class="sec-title sec-title--ico"><AppIcon name="check" :size="16" />自动归类规则 · 分拣台</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="check" :size="16" />自动归类规则</div>
   <section class="card">
     <p class="hint">按顺序匹配商户/商品关键词,命中即归入指定分类,<strong>优先于分类自带关键词</strong>;账单导入与手动记账均生效。</p>
     <div class="row wrap rule-kinds">
@@ -374,7 +374,7 @@ async function delRecurring() {
   </section>
 
   <!-- 预算管理 -->
-  <div class="sec-title sec-title--ico"><AppIcon name="fish" :size="16" />月度预算 · 口粮额度</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="fish" :size="16" />月度预算</div>
   <section class="card">
     <p class="hint">为支出分类设置每月额度，首页与统计会展示执行进度；留空或 0 表示不设预算。</p>
     <div v-for="c in store.categories.filter((c) => c.kind === 'expense')" :key="'b-' + c.id" class="row-line row-line--budget">
@@ -402,7 +402,7 @@ async function delRecurring() {
   </section>
 
   <!-- 周期账单 -->
-  <div class="sec-title sec-title--ico"><AppIcon name="calendar" :size="16" />周期账单 · 订阅公告</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="calendar" :size="16" />周期账单</div>
   <section class="card">
     <p class="hint">房租、会员、话费等固定扣费:到期会显示在首页「近期账单」,点「缴账」一键入账并自动顺延下期。</p>
     <div v-for="r in store.recurring" :key="r.id" class="row-line row-line--rec">
@@ -433,7 +433,7 @@ async function delRecurring() {
   </section>
 
   <!-- 数据管理 -->
-  <div class="sec-title sec-title--ico"><AppIcon name="ledger" :size="16" />数据档案室</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="ledger" :size="16" />数据备份与恢复</div>
   <section class="card">
     <div class="row wrap">
       <button class="btn btn--ico" @click="downloadExport"><AppIcon name="download" :size="15" />导出备份 JSON</button>
@@ -448,14 +448,14 @@ async function delRecurring() {
   </section>
 
   <!-- 外观 -->
-  <div class="sec-title sec-title--ico"><AppIcon name="sun" :size="16" />外观 · 印刷时段</div>
+  <div class="sec-title sec-title--ico"><AppIcon name="sun" :size="16" />外观主题</div>
   <section class="card row">
     <button class="btn btn--ico" :class="{ 'btn--on': store.settings.theme === 'dark' }" @click="setTheme('dark')"><AppIcon name="moon" :size="15" />夜班</button>
     <button class="btn btn--ico" :class="{ 'btn--on': store.settings.theme === 'light' }" @click="setTheme('light')"><AppIcon name="sun" :size="15" />日刊</button>
-    <span class="pencil-note appearance-note">日刊是米白旧报纸，夜班是编辑部的台灯。</span>
+    <span class="pencil-note appearance-note">日刊是米白旧报纸，夜班是暖棕台灯色。</span>
   </section>
 
-  <p class="about serif">爪爪日报 PawPress · v1.9.0 · 猫咪编辑部出品 · 数据自持</p>
+  <p class="about serif">喵账本 MeowLedger · v1.10.0 · 个人记账 · 数据自持</p>
 
   <!-- 账户编辑弹层 -->
   <Teleport to="body">

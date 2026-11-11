@@ -239,14 +239,14 @@ watch([month, year, () => store.settings.theme, netWorth, topTags, yearStats], r
 <template>
   <header class="head">
     <div>
-      <span class="kicker">数据副刊 · DATA SUPPLEMENT</span>
-      <h1 class="head__title serif">统计副刊</h1>
+      <span class="kicker">收支报表 · REPORTS</span>
+      <h1 class="head__title serif">统计报表</h1>
     </div>
     <button class="btn btn--ghost btn--sm btn--ico head__print" @click="printReport">
       <AppIcon name="print" :size="16" />打印本期
     </button>
   </header>
-  <p class="print-only print-title serif">爪爪日报 · {{ monthLabel(month) }} 数据副刊</p>
+  <p class="print-only print-title serif">喵账本 · {{ monthLabel(month) }} 收支报表</p>
 
   <div class="monthnav">
     <button class="btn btn--ghost btn--sm" aria-label="上一月" @click="month = addMonths(month, -1)">‹</button>
@@ -272,14 +272,14 @@ watch([month, year, () => store.settings.theme, netWorth, topTags, yearStats], r
       <div class="sec-title">支出分类占比</div>
       <section class="card chart-card">
         <div ref="pieEl" class="chart chart--pie"></div>
-        <p v-if="!byCategory.length" class="chart-empty pencil-note">本月还没有支出新闻可排版</p>
+        <p v-if="!byCategory.length" class="chart-empty pencil-note">本月还没有支出记录</p>
       </section>
     </div>
     <div class="duo__col">
       <div class="sec-title">近六个月收支趋势</div>
       <section class="card chart-card">
         <div ref="lineEl" class="chart chart--line"></div>
-        <p class="chart-note pencil-note">实线是收入，虚线是支出——两条线离得越开，猫粮越充足。</p>
+        <p class="chart-note pencil-note">实线是收入，虚线是支出——两条线离得越开，结余越充足。</p>
       </section>
     </div>
   </div>
@@ -344,7 +344,7 @@ watch([month, year, () => store.settings.theme, netWorth, topTags, yearStats], r
 
   <div class="stats-sign">
     <CatArt variant="wave" :size="66" class="stats-sign__cat" />
-    <p class="pencil-note">—— 本期数据由猫咪编辑部核算，误差以你的账本为准 ——</p>
+    <p class="pencil-note">—— 本期数据由记账助手墨墨核算，误差以你的账本为准 ——</p>
   </div>
 </template>
 

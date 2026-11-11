@@ -1,17 +1,19 @@
 <div align="center">
 
-# 爪爪日报 · PawPress
+![喵账本 MeowLedger · 个人记账平台](docs/brand-cover.png)
 
-**一份「卡通小猫 × 复古报刊编辑部」风格的猫咪生活报式记账应用 —— 无后端、无数据库、数据完全自持**
+# 喵账本 · MeowLedger
+
+**一个「卡通小猫 × 复古报刊编辑部」风格的个人记账平台 —— 无后端、无数据库、数据完全自持**
 
 米白旧报纸 · 手绘多彩图标 · PWA · 微信 / 支付宝账单导入 · GitHub 私有仓库同步 · 自动归类
 
-[![GitHub stars](https://img.shields.io/github/stars/rwzdk/inkledger?style=flat-square&color=gold)](https://github.com/rwzdk/inkledger/stargazers)
-[![version](https://img.shields.io/badge/version-1.9.0-gold?style=flat-square)](./README.md#-更新日志)
+[![GitHub stars](https://img.shields.io/github/stars/MindOfqc/inkledger?style=flat-square&color=gold)](https://github.com/MindOfqc/inkledger/stargazers)
+[![version](https://img.shields.io/badge/version-1.10.0-gold?style=flat-square)](./README.md#-更新日志)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold?style=flat-square)](./LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Build](https://img.shields.io/github/actions/workflow/status/rwzdk/inkledger/ci.yml?style=flat-square&label=CI)](https://github.com/rwzdk/inkledger/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/MindOfqc/inkledger/ci.yml?style=flat-square&label=CI)](https://github.com/MindOfqc/inkledger/actions)
 
 </div>
 
@@ -19,7 +21,7 @@
 
 ## 这是什么
 
-爪爪日报（PawPress）是一个**部署在哪里都能跑**的个人记账本。它把每天的收支排成一份**猫咪生活报**：头版是本月收支结余，副刊是统计图表，记一笔是向编辑部投稿，手绘小猫主编「墨墨」替你审稿——
+喵账本（MeowLedger）是一个**部署在哪里都能跑**的个人记账平台。它用「卡通小猫 × 复古报刊编辑部」的视觉语言来记账：本月账本是收支结余总览，统计报表是分类占比与趋势，「记一笔」是一张记账单，手绘记账助手「墨墨」替你核对每一笔——报刊只是它的样子，记账才是它做的事。
 
 - **纯静态**：构建产物只是一堆 HTML/JS/CSS，任何静态托管（Qoder Sites、Cloudflare Pages、Vercel、GitHub Pages…）免费部署，永不担心服务停机
 - **数据自持**：账单保存在浏览器本地，可随时同步到你自己的 **GitHub 私有仓库**——不经过任何第三方服务器，天然带版本历史
@@ -32,23 +34,23 @@
 
 ## 界面预览
 
-| 桌面端 · 日刊（头版） | 移动端 |
+| 桌面端 · 日刊（本月账本） | 移动端 |
 |:---:|:---:|
 | ![桌面首页](docs/hero-desktop.png) | ![移动端首页](docs/mobile-home.png) |
-| **数据副刊** | **夜班主题** |
+| **统计报表** | **夜班主题** |
 | ![统计](docs/desktop-stats.png) | ![夜班](docs/light-home.png) |
-| **记一笔 · 投稿单** | **编辑部设置** |
-| ![投稿单](docs/mobile-editor.png) | ![设置](docs/desktop-settings.png) |
+| **记一笔 · 记账单** | **账本设置** |
+| ![记账单](docs/mobile-editor.png) | ![设置](docs/desktop-settings.png) |
 
 ## ✨ 功能特性
 
 - 🗒️ **记账**：支出 / 收入 / 转账，二级语义清晰的账户体系（微信零钱、支付宝、现金、银行卡…即「消费来源」）
-- ↩️ **安心操作**：删除账目 / 账户 / 分类 / 周期账单 / 储蓄目标、清空与导入数据均可**一键撤销**；危险操作走主题化「审稿签」确认框，不再用浏览器原生弹窗
+- ↩️ **安心操作**：删除账目 / 账户 / 分类 / 周期账单 / 储蓄目标、清空与导入数据均可**一键撤销**；危险操作走主题化确认框，不再用浏览器原生弹窗
 - 🔎 **流水工作台**：四种实时排序（日期 / 金额升降）、批量勾选删除、**保存视图**（把常用筛选 + 排序收藏成快捷方式，跨月复用）
 - 📥 **账单导入**：微信支付、支付宝官方导出的 CSV 一键导入；自动建户（按银行卡尾号识别同一账户）、关键词自动归类、交易单号去重、退款标记
 - 📊 **统计分析**：分类占比环图、近六个月收支趋势、消费来源分布、分类排行与日均支出
 - ☁️ **GitHub 同步**：Fine-grained PAT 授权，自动创建私有数据仓库，多端按 `updatedAt` 合并
-- 🎨 **双主题**：日刊（默认）/ 夜班——日刊是米白旧报纸底纹 + 浅棕文字 + 橘黄墨绿点缀，夜班是编辑部台灯下的暖棕暗色；全站手绘多彩图标，报头与侧栏、空态、便签、投稿单、设置页统一为同一只手绘插画主编猫「墨墨」的多姿势形象
+- 🎨 **双主题**：日刊（默认）/ 夜班——日刊是米白旧报纸底纹 + 浅棕文字 + 橘黄墨绿点缀，夜班是暖棕台灯暗色；全站手绘多彩图标，左上角品牌标识与报头、侧栏、空态、便签、记账单、设置页统一为同一只手绘记账助手猫「墨墨」的多姿势形象
 - 📱 **PWA**：可安装到手机桌面，Service Worker 离线访问
 - 🔒 **隐私**：无统计、无追踪、无后端；Token 仅存于浏览器 localStorage
 
@@ -57,7 +59,7 @@
 ### 本地开发
 
 ```bash
-git clone https://github.com/rwzdk/inkledger.git
+git clone https://github.com/MindOfqc/inkledger.git
 cd inkledger
 pnpm install    # 或 npm install
 pnpm dev        # http://localhost:5173
@@ -65,10 +67,10 @@ pnpm dev        # http://localhost:5173
 
 ### 部署
 
-爪爪日报是纯静态应用，`pnpm build` 后把 `dist/` 扔到任意静态托管即可。
+喵账本是纯静态应用，`pnpm build` 后把 `dist/` 扔到任意静态托管即可。
 **Qoder Sites / Cloudflare Pages / Vercel / Netlify / GitHub Pages** 的图文步骤见 [DEPLOY.md](./DEPLOY.md)。
 
-[![Deploy with Vercel](https://img.shields.io/badge/Vercel-一键部署-black?style=flat-square&logo=vercel)](https://vercel.com/new/clone?repository-url=https://github.com/rwzdk/inkledger)
+[![Deploy with Vercel](https://img.shields.io/badge/Vercel-一键部署-black?style=flat-square&logo=vercel)](https://vercel.com/new/clone?repository-url=https://github.com/MindOfqc/inkledger)
 
 ## 📥 如何导出微信 / 支付宝账单
 
@@ -77,12 +79,12 @@ pnpm dev        # http://localhost:5173
 | 微信 | 我 → 服务 → 钱包 → 账单 → 右上角「…」→ 导出账单记录 → 用于个人对账 | 新版直接生成 **xlsx**，旧版经邮箱发送 CSV（解压密码为身份证号）；两种都支持 |
 | 支付宝 | 我的 → 账单 → 右上角「…」→ 开具交易流水 / 对账单 | 解压后得到 CSV |
 
-导出后在爪爪日报「设置 → 微信 / 支付宝账单导入」上传即可。xlsx / CSV 自动识别；CSV 支持 UTF-8 与 GBK 编码；xlsx 内的 Excel 序列日期会自动转换。已用真实微信账单（134 笔）验证：导入笔数与金额和账单自述完全一致。
+导出后在喵账本「设置 → 微信 / 支付宝账单导入」上传即可。xlsx / CSV 自动识别；CSV 支持 UTF-8 与 GBK 编码；xlsx 内的 Excel 序列日期会自动转换。已用真实微信账单（134 笔）验证：导入笔数与金额和账单自述完全一致。
 
 ## ☁️ 数据同步与隐私
 
 1. 在 [GitHub Settings → Developer settings](https://github.com/settings/tokens?type=beta) 创建 **Fine-grained Token**（只需仓库读写权限，建议设置有效期）
-2. 在爪爪日报「设置 → GitHub 同步」粘贴 Token 并校验
+2. 在喵账本「设置 → GitHub 同步」粘贴 Token 并校验
 3. 点击「立即同步」——首次会自动创建 `<你的用户名>-inkledger-data` **私有仓库**，账本以 `data.json` 存于其中
 
 Token 与数据都不会离开你的浏览器到任何第三方服务器（仅 GitHub 官方 API）。合并策略为按条目 `updatedAt` 新者胜。
@@ -109,6 +111,16 @@ Token 与数据都不会离开你的浏览器到任何第三方服务器（仅 G
 欢迎 Issue 与 PR。提交前请跑 `pnpm test && pnpm build`。
 
 ## 📝 更新日志
+
+### v1.10.0（2026-11-11）
+
+- **change**：项目更名 **「爪爪日报 PawPress」→「喵账本 MeowLedger」**，明确**个人记账平台**定位。报刊编辑部只是视觉语言，名称、导航、组件与文案全部回到记账口径：本月账本 / 收支流水 / 统计报表 / 记账单 / 账本设置，「投稿 / 改稿 / 存档 / 副刊」等隐喻改为「记账 / 编辑 / 账目 / 报表」
+- **style**：**左上角品牌标识重做**——新增手绘 SVG 徽章 `brand-mark.svg`（米白报纸底 + 橘猫探头 + 墨绿账本 + 金币 ¥ + 铅笔），`BrandMark` 组件接入侧栏，做成可点击回首页的品牌按钮（44px 徽章 + 「喵账本」+「MeowLedger · 个人记账」副标题），hover 微旋转、键盘可达
+- **style**：**favicon 与 PWA 图标同源重制**——左上角标识、`favicon.png` / `icon-192.png` / `icon-512.png`（maskable）共用同一份 SVG，经 Edge 渲染 + Pillow 合成，品牌视觉完全一致
+- **feat**：新增 GitHub 仓库介绍封面 `docs/brand-cover.png`（品牌标识 + 记账定位文案 + 真实界面截图），用于 README 顶部与仓库 Social Preview
+- **compat**：保存视图存储键 `pawpress:views` → `meowledger:views`，读取时自动从旧键无损迁移（新键优先、空数组不复活旧视图、新键损坏回退旧键）；主账本 key、导出文件名、GitHub 数据仓库名、npm 包名、仓库 slug 保持不变，老数据零迁移
+- **test**：单测扩充至 **146 项断言**（新增保存视图旧键迁移 / 新键优先 / 损坏回退）；DOM 探针新增品牌标识加载、左上角品牌名与记账定位副标题断言
+- PWA 缓存版本升至 `meowledger-v1.10.0`；全部功能、快捷键、深链、打印、数据格式零迁移兼容
 
 ### v1.9.0（2026-11-11）
 

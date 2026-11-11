@@ -20,7 +20,7 @@ const PORT = 4199
 const CDP = 9222
 const base = `http://localhost:${PORT}/`
 const preview = spawn(process.execPath, [resolve(root, 'node_modules/vite/bin/vite.js'), 'preview', '--port', String(PORT), '--strictPort'], { cwd: root, stdio: 'ignore', windowsHide: true })
-const profile = resolve(tmpdir(), `pawpress-probe-${Date.now()}`)
+const profile = resolve(tmpdir(), `meowledger-probe-${Date.now()}`)
 mkdirSync(profile, { recursive: true })
 const browser = spawn(edge, ['--headless=new', '--disable-gpu', '--no-first-run', '--disable-extensions', `--remote-debugging-port=${CDP}`, `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore', windowsHide: true })
 const cleanup = () => { try { browser.kill() } catch {}; try { preview.kill() } catch {}; try { rmSync(profile, { recursive: true, force: true }) } catch {} }
@@ -82,11 +82,17 @@ async function goto(hash, { w, h, mobile, clearStorage }) {
     const cats=[...document.querySelectorAll('img.cat-art')].map(im=>({alt:im.alt,nw:im.naturalWidth,ok:im.complete&&im.naturalWidth>0}));
     const de=document.documentElement;
     const sn=document.querySelector('.sidenav'), tb=document.querySelector('.tabbar');
+    const bm=document.querySelector('.sidenav__brand .brand-mark');
+    const bt=document.querySelector('.sidenav__brand');
+    const bs=document.querySelector('.sidenav__sub');
     return JSON.stringify({
       title:document.title,
       h1:(document.querySelector('.masthead__title')||document.querySelector('h1')||{}).textContent?.trim()||null,
       theme:de.dataset.theme,
       cats, catsOk:cats.every(c=>c.ok), catCount:cats.length,
+      brandMark:bm?{nw:bm.naturalWidth,ok:bm.complete&&bm.naturalWidth>0}:null,
+      brandText:bt?bt.textContent.trim():null,
+      brandSub:bs?bs.textContent.trim():null,
       overflowX:de.scrollWidth>window.innerWidth+1, scrollW:de.scrollWidth, innerW:window.innerWidth,
       sidenav:sn?getComputedStyle(sn).display:'absent', tabbar:tb?getComputedStyle(tb).display:'absent'
     });
@@ -131,7 +137,11 @@ await connect()
 // 桌面各页（#demo 有数据）
 const desk = { w: 1440, h: 900, mobile: false }
 let r = MEASURE(await goto('#demo', desk))
-check('桌面首页 标题', r.title.includes('爪爪日报'), r.title)
+check('桌面首页 标题', r.title.includes('喵账本'), r.title)
+check('桌面首页 报头标题', r.h1 === '喵账本', r.h1)
+check('桌面首页 品牌标识加载', !!r.brandMark && r.brandMark.ok, JSON.stringify(r.brandMark))
+check('桌面首页 左上角品牌名', r.brandText === '喵账本', r.brandText)
+check('桌面首页 记账定位副标题', r.brandSub === 'MeowLedger · 个人记账', r.brandSub)
 check('桌面首页 报头猫加载', r.cats.some((c) => c.alt.includes('端坐读报') && c.ok))
 check('桌面首页 全部猫加载', r.catsOk, `${r.catCount} 只: ` + r.cats.map((c) => c.alt).join('/'))
 check('桌面首页 无横向溢出', !r.overflowX, `scrollW=${r.scrollW} innerW=${r.innerW}`)
@@ -139,19 +149,19 @@ check('桌面首页 侧栏可见', r.sidenav !== 'none' && r.sidenav !== 'absent
 check('桌面首页 无报错', errors.length === 0, errors.join(' | '))
 
 r = MEASURE(await goto('#demo/stats', desk))
-check('统计副刊 署名猫加载', r.cats.some((c) => c.ok), `${r.catCount} 只`)
-check('统计副刊 无横向溢出', !r.overflowX)
-check('统计副刊 无报错', errors.length === 0, errors.join(' | '))
+check('统计报表 署名猫加载', r.cats.some((c) => c.ok), `${r.catCount} 只`)
+check('统计报表 无横向溢出', !r.overflowX)
+check('统计报表 无报错', errors.length === 0, errors.join(' | '))
 
 r = MEASURE(await goto('#demo/settings', desk))
-check('编辑部设置 头图猫加载', r.cats.some((c) => c.ok), `${r.catCount} 只`)
-check('编辑部设置 无横向溢出', !r.overflowX)
-check('编辑部设置 无报错', errors.length === 0, errors.join(' | '))
+check('账本设置 头图猫加载', r.cats.some((c) => c.ok), `${r.catCount} 只`)
+check('账本设置 无横向溢出', !r.overflowX)
+check('账本设置 无报错', errors.length === 0, errors.join(' | '))
 
 r = MEASURE(await goto('#demo/add', desk))
-check('投稿单 读报猫加载', r.cats.some((c) => c.alt.includes('读报') && c.ok), `${r.catCount} 只`)
-check('投稿单 无横向溢出', !r.overflowX)
-check('投稿单 无报错', errors.length === 0, errors.join(' | '))
+check('记账单 读报猫加载', r.cats.some((c) => c.alt.includes('读报') && c.ok), `${r.catCount} 只`)
+check('记账单 无横向溢出', !r.overflowX)
+check('记账单 无报错', errors.length === 0, errors.join(' | '))
 
 // 空态首页（清空 localStorage → 无账目 → 蜷睡猫）
 r = MEASURE(await goto('#light', { ...desk, clearStorage: true }))
@@ -168,9 +178,9 @@ check('移动首页 无横向溢出', !r.overflowX, `scrollW=${r.scrollW} innerW
 check('移动首页 无报错', errors.length === 0, errors.join(' | '))
 
 r = MEASURE(await goto('#demo/add', mob))
-check('移动投稿单 读报猫加载', r.cats.some((c) => c.alt.includes('读报') && c.ok))
-check('移动投稿单 无横向溢出', !r.overflowX, `scrollW=${r.scrollW} innerW=${r.innerW}`)
-check('移动投稿单 无报错', errors.length === 0, errors.join(' | '))
+check('移动记账单 读报猫加载', r.cats.some((c) => c.alt.includes('读报') && c.ok))
+check('移动记账单 无横向溢出', !r.overflowX, `scrollW=${r.scrollW} innerW=${r.innerW}`)
+check('移动记账单 无报错', errors.length === 0, errors.join(' | '))
 
 // 夜班主题
 r = MEASURE(await goto('#demo/dark', desk))
@@ -243,10 +253,10 @@ check('批量撤销 存档恢复', N2 === N0, `${N1} → ${N2}`)
 // 4) 投稿单删除单笔 + 撤销
 await evaluate(`document.querySelector('.tx').click()`)
 await sleep(350)
-check('投稿单 编辑弹层打开', await evaluate(`!!document.querySelector('.overlay .sheet')`))
+check('记账单 编辑弹层打开', await evaluate(`!!document.querySelector('.overlay .sheet')`))
 await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
 await sleep(250)
-check('投稿单删除 弹出确认框', await confirmOpen())
+check('记账单删除 弹出确认框', await confirmOpen())
 // 焦点默认落在「取消」
 const focusedCancel = await evaluate(`document.activeElement === document.querySelector('.confirm__actions .btn')`)
 check('确认框 焦点默认在取消', focusedCancel)
@@ -255,14 +265,14 @@ await pressKey('Enter', 'Enter', 13)
 await sleep(250)
 check('确认框 取消态回车不确认', !(await confirmOpen()))
 check('回车取消后存档未变', (await archiveCount()) === N0)
-check('回车取消后投稿单仍在', await evaluate(`!!document.querySelector('.overlay .sheet')`))
+check('回车取消后记账单仍在', await evaluate(`!!document.querySelector('.overlay .sheet')`))
 // 重新打开，Esc 取消确认
 await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
 await sleep(250)
 await pressKey('Escape', 'Escape', 27)
 await sleep(250)
 check('确认框 Esc 取消', !(await confirmOpen()))
-check('Esc 取消后投稿单仍在', await evaluate(`!!document.querySelector('.overlay .sheet')`))
+check('Esc 取消后记账单仍在', await evaluate(`!!document.querySelector('.overlay .sheet')`))
 // 再次删除：Tab 到「确定」再回车才确认
 await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
 await sleep(250)
@@ -274,16 +284,16 @@ await pressKey('Enter', 'Enter', 13)
 await sleep(350)
 check('确认框 确定态回车确认', !(await confirmOpen()))
 const N3 = await archiveCount()
-check('投稿单删除 存档减一', N3 === N0 - 1, `${N0} → ${N3}`)
-check('投稿单删除 提示带撤销', await toastHasUndo())
+check('记账单删除 存档减一', N3 === N0 - 1, `${N0} → ${N3}`)
+check('记账单删除 提示带撤销', await toastHasUndo())
 await evaluate(`document.querySelector('.toast__action').click()`)
 await sleep(350)
-check('投稿单撤销 存档恢复', (await archiveCount()) === N0)
+check('记账单撤销 存档恢复', (await archiveCount()) === N0)
 
-// 5) 新建投稿（算式金额）端到端
+// 5) 新建记账（算式金额）端到端
 await evaluate(`[...document.querySelectorAll('.tabbar__item, .sidenav__item')].find(b => b.textContent.includes('记一笔'))?.click()`)
 await sleep(350)
-check('新建 投稿单打开', await evaluate(`!!document.querySelector('.overlay .sheet')`))
+check('新建 记账单打开', await evaluate(`!!document.querySelector('.overlay .sheet')`))
 await setInput('.amount-box__input', '12+8')
 await evaluate(`document.querySelector('.amount-box__input').dispatchEvent(new Event('blur'))`)
 await sleep(200)
@@ -291,8 +301,8 @@ const normAmt = await evaluate(`document.querySelector('.amount-box__input').val
 check('新建 算式金额归一', normAmt === '20' || normAmt === '20.00', normAmt)
 await evaluate(`document.querySelector('.overlay .sheet .actions .btn--gold').click()`)
 await sleep(350)
-check('新建 投稿入账存档加一', (await archiveCount()) === N0 + 1)
-// 删除刚建的投稿以回到基线（不撤销）
+check('新建 保存账目存档加一', (await archiveCount()) === N0 + 1)
+// 删除刚建的账目以回到基线（不撤销）
 await evaluate(`document.querySelector('.tx').click()`)
 await sleep(300)
 await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)

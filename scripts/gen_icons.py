@@ -1,81 +1,105 @@
-"""从手绘主编猫插画生成 PWA / favicon 图标（PNG）。
+"""从品牌标识 src/assets/brand-mark.svg 同源生成 PWA / favicon 图标（PNG）。
 用法：python scripts/gen_icons.py
-以 src/assets/cats/cat-editor.webp（端坐读报的墨墨）为主体，
-合成到米白报纸圆角徽章上，输出：
-  public/icon-192.png / icon-512.png（maskable：主体落在中心 80% 安全区）
-  public/favicon.png（64×64）
+左上角 BrandMark、favicon、PWA 图标共用同一份 SVG，保证品牌一致。
+SVG 经 Edge headless 渲染为透明 PNG（无 cairosvg 依赖），再用 Pillow 合成：
+  public/icon-192.png   any：透明底，徽章本体
+  public/icon-512.png   maskable：米白纸底铺满方形，主体落在中心 ~72% 安全区
+  public/favicon.png    64×64
+另存 scripts/art/brand-mark-master.png（1024 透明）供 gen_cover.py 复用。
 仅开发期使用，不参与构建。
 """
+import subprocess
+import tempfile
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
-CAT = ROOT / 'src' / 'assets' / 'cats' / 'cat-editor.webp'
+SVG = ROOT / 'src' / 'assets' / 'brand-mark.svg'
 PUB = ROOT / 'public'
+ART = ROOT / 'scripts' / 'art'
+ART.mkdir(parents=True, exist_ok=True)
 
-PAPER_TOP = (248, 241, 224)
-PAPER_BOT = (238, 227, 203)
-FRAME = (201, 183, 145)
+EDGE_CANDIDATES = [
+    r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+    r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
+]
+EDGE = next((p for p in EDGE_CANDIDATES if Path(p).exists()), None)
+if not EDGE:
+    raise SystemExit('未找到 Edge，无法渲染 SVG')
+
+PAPER_TOP = (251, 245, 230)   # #fbf5e6
+PAPER_BOT = (240, 230, 207)   # #f0e6cf
+MASTER = 1024
 
 
-def paper_tile(size, radius_ratio=0.22):
-    """竖向渐变的米白报纸底 + 圆角。maskable 用（背景铺满整块）。"""
+def render_master(size=MASTER):
+    """Edge headless 把 SVG 渲染成透明 PNG。"""
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        html = td / 'mark.html'
+        html.write_text(
+            '<!doctype html><html><head><meta charset="utf-8">'
+            '<style>html,body{margin:0;padding:0;background:transparent}'
+            f'img{{display:block;width:{size}px;height:{size}px}}</style></head>'
+            f'<body><img src="{SVG.as_uri()}"></body></html>',
+            encoding='utf-8',
+        )
+        out = td / 'mark.png'
+        subprocess.run(
+            [EDGE, '--headless=new', '--disable-gpu', '--no-first-run', '--disable-extensions',
+             '--hide-scrollbars', '--force-device-scale-factor=1',
+             '--default-background-color=00000000',
+             f'--window-size={size},{size}', f'--screenshot={out}',
+             f'--user-data-dir={td / "profile"}', html.as_uri()],
+            check=True, timeout=90,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        img = Image.open(out).convert('RGBA')
+    # 裁到实际不透明 bbox，避免视口留白
+    bbox = img.getchannel('A').getbbox()
+    if bbox:
+        img = img.crop(bbox)
+    return img
+
+
+def paper_bg(size):
     grad = Image.new('RGB', (1, size))
     gp = grad.load()
     for y in range(size):
         t = y / (size - 1)
         gp[0, y] = tuple(round(PAPER_TOP[i] + (PAPER_BOT[i] - PAPER_TOP[i]) * t) for i in range(3))
-    base = grad.resize((size, size)).convert('RGBA')
-    # 圆角遮罩
-    mask = Image.new('L', (size, size), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, size - 1, size - 1], radius=int(size * radius_ratio), fill=255)
-    base.putalpha(mask)
-    # 内框线（装饰，落在安全区边缘内侧）
-    inset = int(size * 0.09)
-    frame = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    ImageDraw.Draw(frame).rounded_rectangle(
-        [inset, inset, size - 1 - inset, size - 1 - inset],
-        radius=int(size * radius_ratio * 0.7), outline=FRAME + (255,), width=max(1, size // 96)
-    )
-    return Image.alpha_composite(base, frame)
+    return grad.resize((size, size)).convert('RGBA')
 
 
-def compose(size, fill_ratio, radius_ratio=0.22, full_bleed=False):
-    tile = paper_tile(size, radius_ratio)
-    if full_bleed:
-        # maskable：背景铺满方形（无透明角），主体居中落在安全区
-        bg = Image.new('RGBA', (size, size), PAPER_BOT + (255,))
-        # 用未圆角的渐变铺满
-        grad = Image.new('RGB', (1, size))
-        gp = grad.load()
-        for y in range(size):
-            t = y / (size - 1)
-            gp[0, y] = tuple(round(PAPER_TOP[i] + (PAPER_BOT[i] - PAPER_TOP[i]) * t) for i in range(3))
-        bg = grad.resize((size, size)).convert('RGBA')
-        tile = bg
-    cat = Image.open(CAT).convert('RGBA')
-    target = int(size * fill_ratio)
-    scale = target / max(cat.size)
-    cat = cat.resize((round(cat.width * scale), round(cat.height * scale)), Image.LANCZOS)
-    # 轻微投影
-    sh = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    a = cat.getchannel('A').filter(ImageFilter.GaussianBlur(size * 0.012))
-    shadow = Image.new('RGBA', cat.size, (60, 40, 20, 90))
-    shadow.putalpha(a)
-    x = (size - cat.width) // 2
-    y = (size - cat.height) // 2
-    sh.alpha_composite(shadow, (x + int(size * 0.01), y + int(size * 0.02)))
-    out = Image.alpha_composite(tile, sh)
-    out.alpha_composite(cat, (x, y))
-    return out
+def fit(img, target):
+    scale = target / max(img.size)
+    return img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
 
 
-# 常规图标（圆角、留白稍多）
-compose(192, 0.74).save(PUB / 'icon-192.png', optimize=True)
-# maskable：铺满方形背景，主体落在中心 ~72% 安全区
-compose(512, 0.70, full_bleed=True).save(PUB / 'icon-512.png', optimize=True)
-# favicon（小尺寸，主体略大以便识别）
-compose(64, 0.82, radius_ratio=0.24).save(PUB / 'favicon.png', optimize=True)
+master = render_master()
+master.save(ART / 'brand-mark-master.png', optimize=True)
+opaque = sum(1 for p in master.getchannel('A').getdata() if p > 16)
+if opaque < master.width * master.height * 0.1:
+    raise SystemExit(f'渲染异常：不透明像素过少 ({opaque})')
+print(f'[ok] master {master.size} opaque={opaque / (master.width * master.height):.2%}')
+
+# any：透明底，徽章占满 ~92%
+icon192 = Image.new('RGBA', (192, 192), (0, 0, 0, 0))
+m = fit(master, int(192 * 0.94))
+icon192.alpha_composite(m, ((192 - m.width) // 2, (192 - m.height) // 2))
+icon192.save(PUB / 'icon-192.png', optimize=True)
+
+# maskable：纸底铺满方形，主体 ~72% 安全区
+icon512 = paper_bg(512)
+m = fit(master, int(512 * 0.72))
+icon512.alpha_composite(m, ((512 - m.width) // 2, (512 - m.height) // 2))
+icon512.save(PUB / 'icon-512.png', optimize=True)
+
+# favicon：透明底，主体略大
+fav = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+m = fit(master, int(64 * 0.96))
+fav.alpha_composite(m, ((64 - m.width) // 2, (64 - m.height) // 2))
+fav.save(PUB / 'favicon.png', optimize=True)
 
 for n in ['icon-192.png', 'icon-512.png', 'favicon.png']:
     p = PUB / n

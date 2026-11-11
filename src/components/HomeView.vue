@@ -74,7 +74,7 @@ async function bulkDelete() {
   if (!ids.length) return
   const ok = await askConfirm({
     title: `删除选中的 ${ids.length} 笔账目？`,
-    message: '它们将被一并移入回收站，可在提示里点「撤销」整批找回。',
+    message: '删除后可在提示条点「撤销」整批找回。',
     confirmLabel: `删除 ${ids.length} 笔`, danger: true
   })
   if (!ok) return
@@ -141,15 +141,15 @@ const filtered = computed(() => sortTxs(
 /** 按日分组（保持排序后的顺序） */
 const groups = computed(() => groupByDay(filtered.value))
 
-/** 头版一句话点评：随结余/超支/账单变化 */
+/** 账本一句话点评：随结余/超支/账单变化 */
 const editorial = computed(() => {
   const over = budgetRows.value.filter((b) => b.remain < 0)
   const soon = bills.value.filter((b) => daysFromToday(b.nextDate) <= 3)
-  if (over.length) return `「${over[0].name}」已超出预算，主编建议先停一停爪子。`
+  if (over.length) return `「${over[0].name}」已超出预算，墨墨建议先停一停爪子。`
   if (soon.length) return `「${soon[0].name}」快到期了，别忘了留一份小鱼干的钱。`
-  if (!store.txs.length) return '本版空白，等你的第一条生活新闻。'
-  if (summary.value.net < 0) return '本月支出跑在收入前面，夜班编辑部正在核算。'
-  if (summary.value.income && summary.value.net / summary.value.income > 0.4) return '结余可观，主编批准存入猫罐头基金。'
+  if (!store.txs.length) return '本月还没有账目，记下第一笔吧。'
+  if (summary.value.net < 0) return '本月支出跑在收入前面，墨墨正在帮你核算。'
+  if (summary.value.income && summary.value.net / summary.value.income > 0.4) return '结余可观，墨墨建议存入猫罐头基金。'
   return '收支平稳，日子照旧过，账照旧记。'
 })
 
@@ -179,13 +179,13 @@ function accountBadge(t) {
 <template>
   <!-- 刊号条 -->
   <div class="edition">
-    <span class="kicker">头版 · FRONT PAGE</span>
+    <span class="kicker">本月账本 · MONTHLY LEDGER</span>
     <div class="monthnav">
       <button class="btn btn--ghost btn--sm" aria-label="上一月" @click="month = addMonths(month, -1)">‹</button>
       <div class="monthnav__label serif">{{ monthLabel(month) }}</div>
       <button class="btn btn--ghost btn--sm" aria-label="下一月" @click="month = addMonths(month, 1)">›</button>
     </div>
-    <span class="edition__count num">{{ store.txs.length }} 笔存档</span>
+    <span class="edition__count num">{{ store.txs.length }} 笔账目</span>
   </div>
 
   <!-- 头条：本月收支 -->
@@ -214,7 +214,7 @@ function accountBadge(t) {
   <div class="frontpage">
     <!-- 左栏：账目流水 -->
     <div class="frontpage__main">
-      <div class="sec-title">生活流水账</div>
+      <div class="sec-title">收支流水</div>
 
       <div class="chips">
         <button
@@ -232,7 +232,7 @@ function accountBadge(t) {
 
       <div class="search-wrap">
         <AppIcon name="search" :size="16" class="search-wrap__icon" />
-        <input v-model="keyword" class="input search" placeholder="检索旧报：备注 / 商户 / 标签…（按 / 聚焦）" />
+        <input v-model="keyword" class="input search" placeholder="搜索账目：备注 / 商户 / 标签…（按 / 聚焦）" />
       </div>
 
       <!-- 排版工具条：排序 / 批量选择 / 保存视图 -->
@@ -322,14 +322,14 @@ function accountBadge(t) {
 
       <div v-if="!groups.length" class="empty card">
         <CatArt variant="sleep" :size="168" class="empty__cat" />
-        <p class="empty__title serif">{{ keyword || filterAccount !== 'all' || filterType !== 'all' ? '没翻到符合条件的旧报' : '本月还没有新闻' }}</p>
-        <p class="empty__hint">点下面的「记一笔」投一条稿，或在设置里导入微信 / 支付宝账单</p>
+        <p class="empty__title serif">{{ keyword || filterAccount !== 'all' || filterType !== 'all' ? '没找到符合条件的账目' : '本月还没有账目' }}</p>
+        <p class="empty__hint">点下面的「记一笔」记下第一笔，或在设置里导入微信 / 支付宝账单</p>
         <div class="empty__actions">
           <button class="btn btn--gold btn--ico" @click="emit('edit', {})">
             <AppIcon name="pen" :size="16" />记一笔
           </button>
           <button v-if="!store.txs.length" class="btn btn--ghost btn--ico" @click="loadSample()">
-            <AppIcon name="stamp" :size="16" />看看示例版面
+            <AppIcon name="stamp" :size="16" />载入示例账本
           </button>
         </div>
       </div>
@@ -337,12 +337,12 @@ function accountBadge(t) {
 
     <!-- 右栏：预算 / 存钱罐 / 催缴单 -->
     <aside class="frontpage__side">
-      <div class="sec-title">编辑部专栏</div>
+      <div class="sec-title">账本助手</div>
 
       <!-- 月度预算 -->
       <section v-if="budgetRows.length" class="card budget">
         <div class="budget__head">
-          <span class="budget__title serif"><AppIcon name="wallet" :size="16" />本月口粮预算<template v-if="budgetRows.some((b) => b.carryover)">（含结转）</template></span>
+          <span class="budget__title serif"><AppIcon name="wallet" :size="16" />本月预算<template v-if="budgetRows.some((b) => b.carryover)">（含结转）</template></span>
         </div>
         <div class="num budget__sum">已用 {{ fmtMoney(budgetTotal.spent) }} / {{ fmtMoney(budgetTotal.amount) }}</div>
         <div class="budget__bar">
@@ -379,7 +379,7 @@ function accountBadge(t) {
           <div class="goal__bar"><i :style="{ width: goalPct(g) + '%' }"></i></div>
           <div class="goal__row goal__row--sub">
             <small v-if="goalMonthlyNeed(g)" class="goal__need">每月需存 <span class="num">¥{{ fmtMoney(goalMonthlyNeed(g).per) }}</span> · 还差 {{ goalMonthlyNeed(g).months }} 个月</small>
-            <small v-else-if="(Number(g.target) || 0) - (Number(g.saved) || 0) <= 0" class="goal__need goal__need--done">已达成，主编盖了章 ✓</small>
+            <small v-else-if="(Number(g.target) || 0) - (Number(g.saved) || 0) <= 0" class="goal__need goal__need--done">已达成，墨墨盖了章 ✓</small>
             <small v-else class="goal__need">还差 <span class="num">¥{{ fmtMoney((Number(g.target) || 0) - (Number(g.saved) || 0)) }}</span></small>
             <span class="goal__save">
               <input v-model="goalInputs[g.id]" class="input num goal__input" type="number" inputmode="decimal" min="0" placeholder="存入" :aria-label="`向 ${g.name} 存入金额`" />
@@ -407,12 +407,12 @@ function accountBadge(t) {
         </div>
       </section>
 
-      <!-- 编辑部便签 -->
+      <!-- 账本便签 -->
       <section class="memo">
         <span class="tape" style="top: -10px; left: 50%; margin-left: -34px; width: 68px"></span>
         <CatArt variant="wave" :size="76" class="memo__cat" />
-        <p class="pencil-note">主编批注：小额也值得记，<br />月底的报表会替你说话。</p>
-        <p class="memo__sign">—— 墨墨 · 猫咪编辑部</p>
+        <p class="pencil-note">墨墨批注：小额也值得记，<br />月底的报表会替你说话。</p>
+        <p class="memo__sign">—— 墨墨 · 记账助手</p>
       </section>
     </aside>
   </div>

@@ -1,6 +1,6 @@
-# 爪爪日报 PawPress 部署指南
+# 喵账本 MeowLedger 部署指南
 
-爪爪日报是**纯静态应用**：`pnpm build` 产物在 `dist/`，放到任何静态托管即可运行，无需服务器、无需环境变量。
+喵账本是**纯静态应用**：`pnpm build` 产物在 `dist/`，放到任何静态托管即可运行，无需服务器、无需环境变量。
 
 > 先构建：
 > ```bash
@@ -36,7 +36,7 @@
 
 ## 方式三：Vercel
 
-[![Deploy with Vercel](https://img.shields.io/badge/Vercel-一键部署-black?style=flat-square&logo=vercel)](https://vercel.com/new/clone?repository-url=https://github.com/rwzdk/inkledger)
+[![Deploy with Vercel](https://img.shields.io/badge/Vercel-一键部署-black?style=flat-square&logo=vercel)](https://vercel.com/new/clone?repository-url=https://github.com/MindOfqc/inkledger)
 
 或手动：Vercel → Add New Project → 导入仓库 → Framework Preset 选 **Vite** → Output 保持默认（`dist`）→ Deploy。
 
@@ -58,7 +58,7 @@
 
 ## 部署后检查清单
 
-- [ ] 打开站点能看到「爪爪日报」首页
+- [ ] 打开站点能看到「喵账本」首页
 - [ ] 「记一笔」可以保存（刷新后仍在——localStorage 生效）
 - [ ] 设置页能粘贴 GitHub Token 并校验通过（需要浏览器能访问 api.github.com）
 - [ ] 手机浏览器访问 → 添加到主屏幕 → 图标与名称正常（PWA manifest 生效）

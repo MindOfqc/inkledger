@@ -7,6 +7,7 @@ import SettingsView from './components/SettingsView.vue'
 import TxEditor from './components/TxEditor.vue'
 import AppIcon from './components/AppIcon.vue'
 import CatArt from './components/CatArt.vue'
+import BrandMark from './components/BrandMark.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 
 const view = ref('home')
@@ -72,11 +73,10 @@ function setTheme(t) {
   document.documentElement.dataset.theme = t
 }
 
-/* —— 报头日期与期号 —— */
+/* —— 报头日期（记账核对日） —— */
 const today = new Date()
 const WEEK = ['日', '一', '二', '三', '四', '五', '六']
 const dateLine = `${today.getFullYear()} 年 ${today.getMonth() + 1} 月 ${today.getDate()} 日 · 星期${WEEK[today.getDay()]}`
-const issueNo = Math.floor((today - new Date(2024, 0, 1)) / 86400000) + 1
 const postDate = `${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`
 
 /* —— 键盘快捷键:输入框内不触发;N 记一笔、/ 聚焦搜索、Esc 关弹层 —— */
@@ -99,10 +99,12 @@ window.addEventListener('keydown', (e) => {
 </script>
 
 <template>
-  <!-- 桌面：编辑部 desk -->
+  <!-- 桌面：账本工作台 -->
   <nav class="sidenav">
-    <div class="sidenav__brand"><em><AppIcon name="cat" :size="28" /></em>爪爪日报</div>
-    <div class="sidenav__sub">PawPress · 猫咪生活报</div>
+    <button type="button" class="sidenav__brand" aria-label="喵账本 MeowLedger，回到账目首页" @click="switchTo('home')">
+      <em><BrandMark :size="44" /></em>喵账本
+    </button>
+    <div class="sidenav__sub">MeowLedger · 个人记账</div>
     <button
       v-for="v in views.filter((v) => v.key !== 'add')"
       :key="v.key"
@@ -134,7 +136,7 @@ window.addEventListener('keydown', (e) => {
     <header class="masthead">
       <div class="masthead__meta">
         <span>{{ dateLine }}</span>
-        <span class="masthead__issue">总第 {{ issueNo }} 期 · 今日更新</span>
+        <span class="masthead__issue">MeowLedger · 个人记账 PWA</span>
         <button
           class="chip masthead__theme"
           @click="setTheme(store.settings.theme === 'dark' ? 'light' : 'dark')"
@@ -146,12 +148,12 @@ window.addEventListener('keydown', (e) => {
       <div class="masthead__main">
         <CatArt variant="editor" :size="104" class="masthead__cat" />
         <div class="masthead__center">
-          <h1 class="masthead__title">爪爪日报</h1>
-          <p class="masthead__motto">每一笔开销，都是生活的一条新闻 · 主编 墨墨</p>
+          <h1 class="masthead__title">喵账本</h1>
+          <p class="masthead__motto">一笔一笔，把日子记清楚 · 记账助手 墨墨</p>
         </div>
         <div class="postmark" aria-hidden="true">
-          <span>猫咪编辑部</span>
-          <b>审讫</b>
+          <span>猫咪账房</span>
+          <b>已核对</b>
           <span class="num">{{ postDate }}</span>
         </div>
       </div>

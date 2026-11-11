@@ -104,7 +104,7 @@ async function del() {
   if (!props.init?.id) return
   const ok = await askConfirm({
     title: '删除这笔账目？',
-    message: `「${props.init.payee || props.init.note || '这笔账目'}」将被移入回收站，稍后可在提示里撤销。`,
+    message: `「${props.init.payee || props.init.note || '这笔账目'}」将被删除，可在提示条点「撤销」找回。`,
     confirmLabel: '删除',
     danger: true
   })
@@ -119,12 +119,12 @@ async function del() {
   <Teleport to="body">
     <div class="overlay" @click.self="emit('close')">
       <div class="sheet">
-        <span class="sheet__kicker kicker"><CatArt variant="reading" :size="30" class="sheet__cat" />投稿单 · CONTRIBUTION</span>
+        <span class="sheet__kicker kicker"><CatArt variant="reading" :size="30" class="sheet__cat" />记账单 · LEDGER ENTRY</span>
         <h3 class="sheet__title">
-          {{ isNew ? '记一笔' : '改稿 · 编辑账目' }}
+          {{ isNew ? '记一笔' : '编辑账目' }}
           <button class="sheet__close" aria-label="关闭" @click="emit('close')"><AppIcon name="close" :size="18" /></button>
         </h3>
-        <p class="sheet__hint pencil-note">把今天的小事发到编辑部，金额可以直接写算式（如 12+8）。</p>
+        <p class="sheet__hint pencil-note">记下今天这笔收支，金额可以直接写算式（如 12+8）。</p>
 
         <!-- 类型 -->
         <div class="seg">
@@ -184,7 +184,7 @@ async function del() {
 
         <label class="field" style="margin-top: 12px">
           <span class="field__label">备注</span>
-          <input v-model="form.note" class="input" placeholder="选填，给这条新闻加一句编后语" />
+          <input v-model="form.note" class="input" placeholder="选填，给这笔账目加一句备注" />
         </label>
 
         <label class="field" style="margin-top: 12px">
@@ -204,7 +204,7 @@ async function del() {
           <button v-if="!isNew" class="btn btn--danger btn--ico" @click="del"><AppIcon name="trash" :size="15" />删除</button>
           <span style="flex: 1"></span>
           <button class="btn" @click="emit('close')">取消</button>
-          <button class="btn btn--gold btn--ico" @click="save"><AppIcon name="check" :size="15" />{{ isNew ? '投稿入账' : '保存改稿' }}</button>
+          <button class="btn btn--gold btn--ico" @click="save"><AppIcon name="check" :size="15" />{{ isNew ? '保存账目' : '保存修改' }}</button>
         </div>
       </div>
     </div>

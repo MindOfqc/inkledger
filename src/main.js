@@ -3,7 +3,7 @@ import App from './App.vue'
 import { store, loadSample } from './store.js'
 import './styles/main.css'
 
-// 主题与 PWA 地址栏色同步：默认日刊（米白旧报纸），夜班为暖棕编辑部
+// 主题与 PWA 地址栏色同步：默认日刊（米白旧报纸），夜班为暖棕台灯色
 watch(() => store.settings.theme, (t) => {
   const theme = t === 'dark' ? 'dark' : 'light'
   document.documentElement.dataset.theme = theme

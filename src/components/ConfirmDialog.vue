@@ -52,7 +52,7 @@ function onKeydown(e) {
               {{ confirmState.confirmLabel }}
             </button>
           </div>
-          <p class="pencil-note confirm__hint">别担心，删除后还能在提示里点「撤销」找回来。</p>
+          <p class="pencil-note confirm__hint">请确认后再继续；支持撤销的操作，完成后可以在提示条里点「撤销」。</p>
         </div>
       </div>
     </Transition>

@@ -1,7 +1,7 @@
 /* ============================================================
-   爪爪日报 PawPress 设计系统 —— 「卡通小猫 × 复古报刊编辑部」
+   喵账本 MeowLedger 设计系统 —— 「卡通小猫 × 复古报刊编辑部」视觉的个人记账平台
    日刊：米白旧报纸 + 浅棕文字 + 橘黄 / 墨绿点缀
-   夜班：暖棕编辑部台灯下的深色报纸
+   夜班：暖棕台灯下的深色报纸
    手绘贴纸图标 / 邮票 / 胶带 / 铅笔批注 / 报纸分栏
    ============================================================ */
 
@@ -187,7 +187,7 @@ body::before {
 }
 .masthead__theme { flex: none; }
 
-/* 邮戳：编辑部认证章 */
+/* 邮戳：账房核对章 */
 .postmark {
   flex: none;
   width: 72px;
@@ -464,7 +464,7 @@ body::before {
 /* 带图标的按钮 */
 .btn--ico { display: inline-flex; align-items: center; gap: 7px; }
 
-/* —— 桌面端侧栏：编辑部 desk —— */
+/* —— 桌面端侧栏：账本工作台 —— */
 @media (min-width: 900px) {
   .tabbar { display: none; }
   .sidenav {
@@ -484,21 +484,35 @@ body::before {
   .sidenav__brand {
     font-family: var(--font-serif);
     font-weight: 900;
-    font-size: 21px;
-    letter-spacing: 4px;
+    font-size: 20px;
+    letter-spacing: 2px;
     color: var(--text);
-    padding: 0 8px 10px;
+    padding: 4px 8px 12px;
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
     border-bottom: 3px double var(--line-strong);
+    border-radius: var(--radius-s) var(--radius-s) 0 0;
     margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
   }
+  .sidenav__brand:hover { background: var(--card-2); color: var(--accent-ink); }
+  .sidenav__brand:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .sidenav__brand em {
     font-style: normal;
-    width: 30px; height: 30px;
+    width: 44px; height: 44px;
     display: flex; align-items: center; justify-content: center;
     flex: none;
+  }
+  .sidenav__brand .brand-mark { transition: transform 0.2s ease; }
+  .sidenav__brand:hover .brand-mark { transform: rotate(-4deg) scale(1.05); }
+  @media (prefers-reduced-motion: reduce) {
+    .sidenav__brand:hover .brand-mark { transform: none; }
   }
   .sidenav__sub {
     font-family: var(--font-hand);

@@ -43,7 +43,7 @@ export async function ensureRepo(token, login, name) {
     if (e.status !== 404) throw e
     await gh(token, '/user/repos', {
       method: 'POST',
-      body: { name, private: true, description: '爪爪日报 PawPress 数据仓库（自动创建）', auto_init: true }
+      body: { name, private: true, description: '喵账本 MeowLedger 数据仓库（自动创建）', auto_init: true }
     })
     // 仓库初始化有短暂延迟
     await new Promise((r) => setTimeout(r, 1200))

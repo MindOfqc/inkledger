@@ -380,6 +380,21 @@ ok(describeView({ filterType: 'expense', sortBy: 'amount-desc', keyword: '咖啡
 ok(describeView({ filterType: 'all', sortBy: 'date-desc' }) === '全部账目', '无筛选描述为全部账目')
 const badStore = { getItem: () => '{not json', setItem: () => {} }
 ok(loadViews(badStore).length === 0, '损坏存储安全回退空数组')
+// v1.10 品牌迁移：旧 pawpress:views 只读回退，新 meowledger:views 优先
+const mkStore = (entries = {}) => { const m = new Map(Object.entries(entries)); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) } }
+const legacyView = JSON.stringify([{ id: 'lv1', name: '旧视图', filterType: 'expense', sortBy: 'date-desc' }])
+const legacyOnly = mkStore({ 'pawpress:views': legacyView })
+const migrated = loadViews(legacyOnly)
+ok(migrated.length === 1 && migrated[0].name === '旧视图', '旧键 pawpress:views 可回退读取')
+saveViews(migrated, legacyOnly)
+ok(legacyOnly.getItem('meowledger:views') !== null, '保存写入新键 meowledger:views')
+ok(legacyOnly.getItem('pawpress:views') === legacyView, '旧键保留以便回滚')
+const both = mkStore({ 'pawpress:views': legacyView, 'meowledger:views': JSON.stringify([{ id: 'nv1', name: '新视图' }]) })
+ok(loadViews(both)[0].name === '新视图', '新键优先于旧键')
+const emptied = mkStore({ 'pawpress:views': legacyView, 'meowledger:views': '[]' })
+ok(loadViews(emptied).length === 0, '新键空数组不复活旧视图')
+const corruptNew = mkStore({ 'pawpress:views': legacyView, 'meowledger:views': '{bad' })
+ok(loadViews(corruptNew)[0].name === '旧视图', '新键损坏回退旧键')
 
 /* —— 撤销 / 确认 / 批量删除（store.js，mock localStorage） —— */
 console.log('\n[撤销与确认 store]')

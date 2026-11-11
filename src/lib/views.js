@@ -2,8 +2,11 @@
  * 「保存视图」：把常用的筛选 + 排序组合存到 localStorage，一键套用。
  * 刻意不存月份——视图应跨月复用（如「本月大额支出」「所有餐饮」）。
  * 纯函数 + 薄存储层，便于单元测试（可注入 storage）。
+ * v1.10 品牌迁移：新键 meowledger:views 优先；旧键 pawpress:views 只读回退，
+ * 首次保存后写入新键，旧键保留以便回滚，不丢用户已保存的视图。
  */
-const KEY = 'pawpress:views'
+const KEY = 'meowledger:views'
+const LEGACY_KEY = 'pawpress:views'
 export const MAX_VIEWS = 12
 
 /** 从当前筛选状态提取可持久化的视图条件 */
@@ -34,13 +37,25 @@ function defaultStorage() {
   try { return typeof localStorage !== 'undefined' ? localStorage : null } catch { return null }
 }
 
+function parseViews(raw) {
+  const arr = raw ? JSON.parse(raw) : []
+  if (!Array.isArray(arr)) return null
+  return arr.filter((v) => v && v.id && v.name).slice(0, MAX_VIEWS)
+}
+
 export function loadViews(storage = defaultStorage()) {
   if (!storage) return []
+  // 新键存在且是合法数组（含空数组）时优先；空数组代表用户已清空，不应复活旧视图。
   try {
     const raw = storage.getItem(KEY)
-    const arr = raw ? JSON.parse(raw) : []
-    if (!Array.isArray(arr)) return []
-    return arr.filter((v) => v && v.id && v.name).slice(0, MAX_VIEWS)
+    if (raw !== null && raw !== undefined) {
+      const views = parseViews(raw)
+      if (views) return views
+    }
+  } catch { /* 新键损坏时回退旧键 */ }
+  try {
+    const legacy = storage.getItem(LEGACY_KEY)
+    return parseViews(legacy) || []
   } catch { return [] }
 }
 

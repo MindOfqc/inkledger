@@ -9,7 +9,7 @@
 米白旧报纸 · 手绘多彩图标 · PWA · 微信 / 支付宝账单导入 · GitHub 私有仓库同步 · 自动归类
 
 [![GitHub stars](https://img.shields.io/github/stars/MindOfqc/inkledger?style=flat-square&color=gold)](https://github.com/MindOfqc/inkledger/stargazers)
-[![version](https://img.shields.io/badge/version-1.10.0-gold?style=flat-square)](./README.md#-更新日志)
+[![version](https://img.shields.io/badge/version-1.10.1-gold?style=flat-square)](./README.md#-更新日志)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold?style=flat-square)](./LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -111,6 +111,11 @@ Token 与数据都不会离开你的浏览器到任何第三方服务器（仅 G
 欢迎 Issue 与 PR。提交前请跑 `pnpm test && pnpm build`。
 
 ## 📝 更新日志
+
+### v1.10.1（2026-11-11）
+
+- **style**：**品牌标识升级为完整实体猫**——左上角徽章与 favicon / PWA 图标不再用简笔 SVG 探头猫，改为 AI 手绘生成、与报头主编同一形象的**完整全身橘猫抱账本**实体贴纸（抠底透明 + alpha WebP 约 239KB），经 Edge/Pillow 同源管线重生成 `favicon.png` / `icon-192.png` / `icon-512.png`（maskable），左上角、桌面图标、GitHub 封面三处完全一致
+- PWA 缓存版本升至 `meowledger-v1.10.1`；功能、数据、快捷键、深链零变化
 
 ### v1.10.0（2026-11-11）
 

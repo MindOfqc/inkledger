@@ -455,7 +455,7 @@ async function delRecurring() {
     <span class="pencil-note appearance-note">日刊是米白旧报纸，夜班是暖棕台灯色。</span>
   </section>
 
-  <p class="about serif">喵账本 MeowLedger · v1.10.0 · 个人记账 · 数据自持</p>
+  <p class="about serif">喵账本 MeowLedger · v1.10.1 · 个人记账 · 数据自持</p>
 
   <!-- 账户编辑弹层 -->
   <Teleport to="body">

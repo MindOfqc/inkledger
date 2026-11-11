@@ -1,65 +1,21 @@
-"""从品牌标识 src/assets/brand-mark.svg 同源生成 PWA / favicon 图标（PNG）。
+"""从品牌 master scripts/art/brand-mark-master.png 同源生成 PWA / favicon 图标（PNG）。
 用法：python scripts/gen_icons.py
-左上角 BrandMark、favicon、PWA 图标共用同一份 SVG，保证品牌一致。
-SVG 经 Edge headless 渲染为透明 PNG（无 cairosvg 依赖），再用 Pillow 合成：
-  public/icon-192.png   any：透明底，徽章本体
+master 由 scripts/process_icon.py 从生成的实体猫图标原图抠底而来；
+左上角 BrandMark（src/assets/brand-mark.webp）与 favicon / PWA 图标同源，保证品牌一致：
+  public/icon-192.png   any：透明底，主体 ~94%
   public/icon-512.png   maskable：米白纸底铺满方形，主体落在中心 ~72% 安全区
   public/favicon.png    64×64
-另存 scripts/art/brand-mark-master.png（1024 透明）供 gen_cover.py 复用。
 仅开发期使用，不参与构建。
 """
-import subprocess
-import tempfile
 from pathlib import Path
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-SVG = ROOT / 'src' / 'assets' / 'brand-mark.svg'
 PUB = ROOT / 'public'
-ART = ROOT / 'scripts' / 'art'
-ART.mkdir(parents=True, exist_ok=True)
-
-EDGE_CANDIDATES = [
-    r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
-    r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
-]
-EDGE = next((p for p in EDGE_CANDIDATES if Path(p).exists()), None)
-if not EDGE:
-    raise SystemExit('未找到 Edge，无法渲染 SVG')
+MASTER = ROOT / 'scripts' / 'art' / 'brand-mark-master.png'
 
 PAPER_TOP = (251, 245, 230)   # #fbf5e6
 PAPER_BOT = (240, 230, 207)   # #f0e6cf
-MASTER = 1024
-
-
-def render_master(size=MASTER):
-    """Edge headless 把 SVG 渲染成透明 PNG。"""
-    with tempfile.TemporaryDirectory() as td:
-        td = Path(td)
-        html = td / 'mark.html'
-        html.write_text(
-            '<!doctype html><html><head><meta charset="utf-8">'
-            '<style>html,body{margin:0;padding:0;background:transparent}'
-            f'img{{display:block;width:{size}px;height:{size}px}}</style></head>'
-            f'<body><img src="{SVG.as_uri()}"></body></html>',
-            encoding='utf-8',
-        )
-        out = td / 'mark.png'
-        subprocess.run(
-            [EDGE, '--headless=new', '--disable-gpu', '--no-first-run', '--disable-extensions',
-             '--hide-scrollbars', '--force-device-scale-factor=1',
-             '--default-background-color=00000000',
-             f'--window-size={size},{size}', f'--screenshot={out}',
-             f'--user-data-dir={td / "profile"}', html.as_uri()],
-            check=True, timeout=90,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-        img = Image.open(out).convert('RGBA')
-    # 裁到实际不透明 bbox，避免视口留白
-    bbox = img.getchannel('A').getbbox()
-    if bbox:
-        img = img.crop(bbox)
-    return img
 
 
 def paper_bg(size):
@@ -76,14 +32,13 @@ def fit(img, target):
     return img.resize((round(img.width * scale), round(img.height * scale)), Image.LANCZOS)
 
 
-master = render_master()
-master.save(ART / 'brand-mark-master.png', optimize=True)
-opaque = sum(1 for p in master.getchannel('A').getdata() if p > 16)
-if opaque < master.width * master.height * 0.1:
-    raise SystemExit(f'渲染异常：不透明像素过少 ({opaque})')
-print(f'[ok] master {master.size} opaque={opaque / (master.width * master.height):.2%}')
+master = Image.open(MASTER).convert('RGBA')
+opaque = master.getchannel('A').getextrema()[1]
+if opaque < 16:
+    raise SystemExit('master 异常：几乎全透明')
+print(f'[ok] master {master.size} ({MASTER.stat().st_size / 1024:.1f} KB)')
 
-# any：透明底，徽章占满 ~92%
+# any：透明底，主体占满 ~94%
 icon192 = Image.new('RGBA', (192, 192), (0, 0, 0, 0))
 m = fit(master, int(192 * 0.94))
 icon192.alpha_composite(m, ((192 - m.width) // 2, (192 - m.height) // 2))

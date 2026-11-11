@@ -1,5 +1,5 @@
 /* 喵账本 MeowLedger Service Worker —— 离线可用的静态外壳缓存 */
-const VERSION = 'meowledger-v1.10.0'
+const VERSION = 'meowledger-v1.10.1'
 const SHELL = ['./', './index.html', './manifest.webmanifest', './favicon.png', './icon-192.png', './icon-512.png']
 
 self.addEventListener('install', (e) => {

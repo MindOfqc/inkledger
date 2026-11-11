@@ -1,7 +1,7 @@
 {
   "name": "inkledger",
   "private": true,
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "喵账本 MeowLedger —— 卡通小猫 × 复古报刊风格的纯静态、数据自持个人记账 PWA，支持微信/支付宝账单导入、预算报表与 GitHub 同步",
   "type": "module",
   "scripts": {

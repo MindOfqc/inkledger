@@ -1,12 +1,13 @@
 <script setup>
 /**
- * 喵账本品牌标识：橘猫探头 + 墨绿账本 + 金币铅笔的手绘多彩徽章。
- * 与 favicon / PWA 图标共用同一份 SVG 源，保证左上角与桌面图标一致。
+ * 喵账本品牌标识：完整实体橘猫主编抱账本的实体贴纸（AI 手绘生成后抠底）。
+ * 与 favicon / PWA 图标共用同一份 master（scripts/gen_icons.py 同源输出），
+ * 保证左上角与桌面图标一致。
  */
 defineProps({
   size: { type: [Number, String], default: 40 }
 })
-const src = new URL('../assets/brand-mark.svg', import.meta.url).href
+const src = new URL('../assets/brand-mark.webp', import.meta.url).href
 </script>
 
 <template>
@@ -14,7 +15,7 @@ const src = new URL('../assets/brand-mark.svg', import.meta.url).href
     class="brand-mark"
     :src="src"
     :width="size"
-    :height="size"
+    :height="Math.round(size * 902 / 872)"
     alt=""
     decoding="async"
     draggable="false"

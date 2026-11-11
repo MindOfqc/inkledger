@@ -1,5 +1,5 @@
 /* 爪爪日报 PawPress Service Worker —— 离线可用的静态外壳缓存 */
-const VERSION = 'pawpress-v1.8.0'
+const VERSION = 'pawpress-v1.9.0'
 const SHELL = ['./', './index.html', './manifest.webmanifest', './favicon.png', './icon-192.png', './icon-512.png']
 
 self.addEventListener('install', (e) => {

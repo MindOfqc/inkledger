@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { store, showToast, monthSummary, accountById, categoryById, budgetStatus, upcomingBills, monthlyFixed, payRecurring, contributeGoal } from '../store.js'
+import { ref, computed, watch } from 'vue'
+import { store, showToast, showUndoToast, askConfirm, removeTxs, monthSummary, accountById, categoryById, budgetStatus, upcomingBills, monthlyFixed, payRecurring, contributeGoal, loadSample } from '../store.js'
 import { fmtMoney, monthKey, monthLabel, addMonths, fmtDay, weekLabel, nowDateKey, dueLabel, daysFromToday, ACCOUNT_META } from '../lib/format.js'
+import { filterTxs, sortTxs, groupByDay, SORT_OPTIONS } from '../lib/ledger.js'
+import { loadViews, saveViews, addView, removeView, viewConditions, describeView } from '../lib/views.js'
 import AppIcon from './AppIcon.vue'
 import DataIcon from './DataIcon.vue'
 import CatArt from './CatArt.vue'
@@ -12,6 +14,77 @@ const month = ref(monthKey(nowDateKey()))
 const filterAccount = ref('all')
 const filterType = ref('all')
 const keyword = ref('')
+const sortBy = ref('date-desc')
+
+/* —— 保存视图：跨月复用的筛选 + 排序组合 —— */
+const savedViews = ref(loadViews())
+const savingView = ref(false)
+const viewName = ref('')
+function persistViews() { saveViews(savedViews.value) }
+function applyView(v) {
+  filterType.value = v.filterType || 'all'
+  filterAccount.value = v.filterAccount || 'all'
+  keyword.value = v.keyword || ''
+  sortBy.value = v.sortBy || 'date-desc'
+  showToast(`已套用视图「${v.name}」`)
+}
+function startSaveView() {
+  viewName.value = ''
+  savingView.value = true
+}
+function confirmSaveView() {
+  const name = viewName.value.trim()
+  if (!name) { showToast('给视图起个名字吧'); return }
+  savedViews.value = addView(savedViews.value, name, viewConditions({
+    filterType: filterType.value, filterAccount: filterAccount.value, keyword: keyword.value, sortBy: sortBy.value
+  }))
+  persistViews()
+  savingView.value = false
+  showToast(`视图「${name}」已收藏`)
+}
+async function deleteView(v) {
+  const ok = await askConfirm({ title: '移除这个视图？', message: `「${v.name}」只是筛选快捷方式，移除不影响账目。`, confirmLabel: '移除', danger: true })
+  if (!ok) return
+  savedViews.value = removeView(savedViews.value, v.id)
+  persistViews()
+}
+const accountNameOf = (id) => accountById(id)?.name || '账户'
+function viewDesc(v) { return describeView(v, { accountName: accountNameOf }) }
+
+/* —— 批量选择 —— */
+const selectMode = ref(false)
+const selectedIds = ref(new Set())
+function toggleSelectMode() {
+  selectMode.value = !selectMode.value
+  selectedIds.value = new Set()
+}
+function toggleSelect(id) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+const allVisibleIds = computed(() => filtered.value.map((t) => t.id))
+const allSelected = computed(() => allVisibleIds.value.length > 0 && allVisibleIds.value.every((id) => selectedIds.value.has(id)))
+function toggleSelectAll() {
+  selectedIds.value = allSelected.value ? new Set() : new Set(allVisibleIds.value)
+}
+async function bulkDelete() {
+  const ids = [...selectedIds.value]
+  if (!ids.length) return
+  const ok = await askConfirm({
+    title: `删除选中的 ${ids.length} 笔账目？`,
+    message: '它们将被一并移入回收站，可在提示里点「撤销」整批找回。',
+    confirmLabel: `删除 ${ids.length} 笔`, danger: true
+  })
+  if (!ok) return
+  const n = removeTxs(ids)
+  selectedIds.value = new Set()
+  selectMode.value = false
+  if (n) showUndoToast(`已删除 ${n} 笔账目`)
+}
+// 筛选 / 排序 / 月份变化时清空选择，避免误删不可见的账目
+watch([filterType, filterAccount, keyword, sortBy, month], () => { selectedIds.value = new Set() })
 
 const summary = computed(() => monthSummary(month.value))
 
@@ -27,7 +100,7 @@ const bills = computed(() => upcomingBills(30))
 const fixedMonthly = computed(() => monthlyFixed())
 function payBill(id) {
   const tx = payRecurring(id)
-  if (tx) showToast(`已入账 ${fmtMoney(tx.amount)} · ${tx.payee}`)
+  if (tx) showUndoToast(`已入账 ${fmtMoney(tx.amount)} · ${tx.payee}`)
 }
 
 /** 储蓄目标:首页最多展示 3 条,完整管理在设置页 */
@@ -51,37 +124,22 @@ const goalInputs = ref({})
 function saveGoalContribution(id) {
   const v = goalInputs.value[id]
   const g = contributeGoal(id, v)
-  if (g) showToast(`已存入 ${fmtMoney(v)} · ${g.name}`)
+  if (g) showUndoToast(`已存入 ${fmtMoney(v)} · ${g.name}`)
   goalInputs.value[id] = ''
 }
 
-const filtered = computed(() => {
-  return store.txs
-    .filter((t) => monthKey(t.date) === month.value)
-    .filter((t) => filterType.value === 'all' || t.type === filterType.value)
-    .filter((t) => filterAccount.value === 'all'
-      || t.accountId === filterAccount.value
-      || t.toAccountId === filterAccount.value)
-    .filter((t) => !keyword.value
-      || (t.payee + t.note + (t.tags || []).join(' ')).toLowerCase().includes(keyword.value.toLowerCase()))
-    .sort((a, b) => b.date.localeCompare(a.date))
-})
+const filtered = computed(() => sortTxs(
+  filterTxs(store.txs, {
+    month: month.value,
+    type: filterType.value,
+    account: filterAccount.value,
+    keyword: keyword.value
+  }),
+  sortBy.value
+))
 
-/** 按日分组 */
-const groups = computed(() => {
-  const map = new Map()
-  for (const t of filtered.value) {
-    const day = t.date.slice(0, 10)
-    if (!map.has(day)) map.set(day, [])
-    map.get(day).push(t)
-  }
-  return [...map.entries()].map(([day, list]) => ({
-    day,
-    expense: list.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-    income: list.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-    list
-  }))
-})
+/** 按日分组（保持排序后的顺序） */
+const groups = computed(() => groupByDay(filtered.value))
 
 /** 头版一句话点评：随结余/超支/账单变化 */
 const editorial = computed(() => {
@@ -177,6 +235,56 @@ function accountBadge(t) {
         <input v-model="keyword" class="input search" placeholder="检索旧报：备注 / 商户 / 标签…（按 / 聚焦）" />
       </div>
 
+      <!-- 排版工具条：排序 / 批量选择 / 保存视图 -->
+      <div class="list-controls">
+        <label class="list-controls__sort">
+          <AppIcon name="sort" :size="15" />
+          <select v-model="sortBy" class="select select--sm" aria-label="排序方式">
+            <option v-for="s in SORT_OPTIONS" :key="s.key" :value="s.key">{{ s.label }}</option>
+          </select>
+        </label>
+        <span class="list-controls__count num">{{ filtered.length }} 笔</span>
+        <span class="list-controls__spacer"></span>
+        <button class="chip" :class="{ 'chip--on': selectMode }" @click="toggleSelectMode">
+          <AppIcon name="select" :size="14" />{{ selectMode ? '完成选择' : '批量选择' }}
+        </button>
+        <button class="chip" :class="{ 'chip--on': savingView }" @click="startSaveView">
+          <AppIcon name="bookmark" :size="14" />保存视图
+        </button>
+      </div>
+
+      <!-- 保存的视图 -->
+      <div v-if="savedViews.length || savingView" class="saved-views">
+        <span v-for="v in savedViews" :key="v.id" class="saved-view" :title="viewDesc(v)">
+          <button class="saved-view__apply" @click="applyView(v)">
+            <AppIcon name="bookmark" :size="13" />{{ v.name }}
+          </button>
+          <button class="saved-view__del" :aria-label="`移除视图 ${v.name}`" @click="deleteView(v)">×</button>
+        </span>
+        <span v-if="savingView" class="saved-view saved-view--form">
+          <input
+            v-model="viewName" class="input saved-view__input" maxlength="20"
+            placeholder="视图名称，如「大额支出」" aria-label="视图名称"
+            @keyup.enter="confirmSaveView" @keyup.esc="savingView = false"
+          />
+          <button class="btn btn--gold btn--sm" @click="confirmSaveView">收藏</button>
+          <button class="btn btn--ghost btn--sm" @click="savingView = false">取消</button>
+        </span>
+      </div>
+
+      <!-- 批量操作条 -->
+      <div v-if="selectMode" class="bulk-bar">
+        <label class="bulk-bar__all">
+          <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+          全选
+        </label>
+        <span class="bulk-bar__count num">已选 {{ selectedIds.size }} 笔</span>
+        <span class="list-controls__spacer"></span>
+        <button class="btn btn--danger btn--sm" :disabled="!selectedIds.size" @click="bulkDelete">
+          <AppIcon name="trash" :size="15" />删除所选
+        </button>
+      </div>
+
       <section v-for="g in groups" :key="g.day" class="daygroup">
         <div class="daygroup__head">
           <span class="daygroup__date serif">{{ fmtDay(g.day) }} {{ weekLabel(g.day) }}</span>
@@ -187,23 +295,28 @@ function accountBadge(t) {
           </span>
         </div>
         <div class="card list">
-          <button v-for="t in g.list" :key="t.id" class="tx" @click="emit('edit', { tx: t })">
-            <span class="tx__icon">
-              <AppIcon v-if="t.type === 'transfer'" name="transfer" :size="19" />
-              <DataIcon v-else :icon="txCategoryIcon(t)" :size="20" />
-            </span>
-            <span class="tx__body">
-              <span class="tx__title">{{ txTitle(t) }}</span>
-              <span class="tx__sub">
-                <span v-if="accountBadge(t)" class="badge-src">{{ accountBadge(t) }}</span>
-                {{ txSub(t) }}
-                <span v-for="tag in (t.tags || []).slice(0, 2)" :key="tag" class="tag">#{{ tag }}</span>
+          <div v-for="t in g.list" :key="t.id" class="tx-row" :class="{ 'tx-row--sel': selectMode && selectedIds.has(t.id) }">
+            <label v-if="selectMode" class="tx__check">
+              <input type="checkbox" :checked="selectedIds.has(t.id)" :aria-label="`选择 ${txTitle(t)}`" @change="toggleSelect(t.id)" />
+            </label>
+            <button class="tx" @click="selectMode ? toggleSelect(t.id) : emit('edit', { tx: t })">
+              <span class="tx__icon">
+                <AppIcon v-if="t.type === 'transfer'" name="transfer" :size="19" />
+                <DataIcon v-else :icon="txCategoryIcon(t)" :size="20" />
               </span>
-            </span>
-            <span class="tx__amount num" :class="t.type === 'income' ? 'amt-in' : 'amt-out'">
-              {{ t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄ ' : '-' }}{{ fmtMoney(t.amount) }}
-            </span>
-          </button>
+              <span class="tx__body">
+                <span class="tx__title">{{ txTitle(t) }}</span>
+                <span class="tx__sub">
+                  <span v-if="accountBadge(t)" class="badge-src">{{ accountBadge(t) }}</span>
+                  {{ txSub(t) }}
+                  <span v-for="tag in (t.tags || []).slice(0, 2)" :key="tag" class="tag">#{{ tag }}</span>
+                </span>
+              </span>
+              <span class="tx__amount num" :class="t.type === 'income' ? 'amt-in' : 'amt-out'">
+                {{ t.type === 'income' ? '+' : t.type === 'transfer' ? '⇄ ' : '-' }}{{ fmtMoney(t.amount) }}
+              </span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -211,9 +324,14 @@ function accountBadge(t) {
         <CatArt variant="sleep" :size="168" class="empty__cat" />
         <p class="empty__title serif">{{ keyword || filterAccount !== 'all' || filterType !== 'all' ? '没翻到符合条件的旧报' : '本月还没有新闻' }}</p>
         <p class="empty__hint">点下面的「记一笔」投一条稿，或在设置里导入微信 / 支付宝账单</p>
-        <button class="btn btn--gold btn--ico" style="margin-top: 12px" @click="emit('edit', {})">
-          <AppIcon name="pen" :size="16" />记一笔
-        </button>
+        <div class="empty__actions">
+          <button class="btn btn--gold btn--ico" @click="emit('edit', {})">
+            <AppIcon name="pen" :size="16" />记一笔
+          </button>
+          <button v-if="!store.txs.length" class="btn btn--ghost btn--ico" @click="loadSample()">
+            <AppIcon name="stamp" :size="16" />看看示例版面
+          </button>
+        </div>
       </div>
     </div>
 
@@ -409,12 +527,57 @@ function accountBadge(t) {
 .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
 .chips__gap { flex: none; width: 1px; background: var(--line-strong); margin: 4px 2px; }
-.search-wrap { position: relative; margin: 2px 0 18px; }
+.search-wrap { position: relative; margin: 2px 0 12px; }
 .search-wrap .search { padding-left: 38px; }
 .search-wrap__icon {
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   pointer-events: none;
 }
+
+/* 排版工具条 */
+.list-controls {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0 0 10px; padding: 8px 10px;
+  background: var(--card-2); border: 1px solid var(--line); border-radius: var(--radius-s);
+}
+.list-controls__sort { display: inline-flex; align-items: center; gap: 6px; color: var(--text-dim); }
+.select--sm { padding: 5px 8px; font-size: 12.5px; width: auto; }
+.list-controls__count { font-size: 11.5px; color: var(--text-faint); white-space: nowrap; }
+.list-controls__spacer { flex: 1; }
+.list-controls .chip { flex: none; }
+
+/* 保存视图 */
+.saved-views { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+.saved-view {
+  display: inline-flex; align-items: center;
+  border: 1px dashed var(--gold-line); border-radius: 999px;
+  background: var(--card); overflow: hidden;
+}
+.saved-view__apply {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 12px; color: var(--accent-ink);
+  padding: 5px 4px 5px 11px; max-width: 160px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.saved-view__apply:hover { color: var(--gold-deep); }
+.saved-view__del {
+  background: none; border: none; cursor: pointer; color: var(--text-faint);
+  font-size: 15px; line-height: 1; padding: 5px 9px 5px 4px;
+}
+.saved-view__del:hover { color: var(--ink-red); }
+.saved-view--form { gap: 6px; padding: 4px 6px; border-style: solid; }
+.saved-view__input { width: 150px; padding: 5px 9px; font-size: 12.5px; }
+
+/* 批量操作条 */
+.bulk-bar {
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 0 12px; padding: 9px 12px;
+  background: var(--gold-soft); border: 1px solid var(--gold-line); border-radius: var(--radius-s);
+}
+.bulk-bar__all { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; }
+.bulk-bar__all input { width: 16px; height: 16px; accent-color: var(--gold-deep); cursor: pointer; }
+.bulk-bar__count { font-size: 12.5px; color: var(--text-dim); }
 
 .daygroup { margin-bottom: 18px; }
 .daygroup__head {
@@ -427,14 +590,19 @@ function accountBadge(t) {
 .daygroup__sum { color: var(--text-faint); font-size: 12px; }
 
 .list { padding: 4px 6px; }
+.tx-row { display: flex; align-items: stretch; border-radius: var(--radius-s); }
+.tx-row + .tx-row { border-top: 1px dotted var(--line); }
+.tx-row--sel { background: var(--gold-soft); }
+.tx__check { display: flex; align-items: center; padding: 0 2px 0 8px; flex: none; cursor: pointer; }
+.tx__check input { width: 17px; height: 17px; accent-color: var(--gold-deep); cursor: pointer; }
 .tx {
-  display: flex; align-items: center; gap: 12px; width: 100%;
+  display: flex; align-items: center; gap: 12px; width: 100%; min-width: 0;
   padding: 10px; background: none; border: none; border-radius: var(--radius-s);
   cursor: pointer; color: var(--text); font-family: inherit; text-align: left;
   transition: background 0.12s, transform 0.12s;
 }
-.tx + .tx { border-top: 1px dotted var(--line); }
 .tx:hover { background: var(--card-2); transform: translateX(2px); }
+.tx-row--sel .tx:hover { background: transparent; }
 .tx__icon {
   width: 38px; height: 38px; border-radius: 11px; flex: none;
   display: flex; align-items: center; justify-content: center; font-size: 18px;
@@ -450,6 +618,7 @@ function accountBadge(t) {
 .empty__title { font-size: 17px; font-weight: 700; letter-spacing: 2px; margin: 6px 0 4px; color: var(--text); }
 .empty p { margin: 4px 0; }
 .empty__hint { font-size: 12.5px; color: var(--text-faint); }
+.empty__actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
 .empty .btn { justify-content: center; }
 
 @media (min-width: 900px) {

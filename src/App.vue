@@ -1,12 +1,13 @@
 <script setup>
 import { ref } from 'vue'
-import { store, toast } from './store.js'
+import { store, toast, undoLast, answerConfirm, confirmState } from './store.js'
 import HomeView from './components/HomeView.vue'
 import StatsView from './components/StatsView.vue'
 import SettingsView from './components/SettingsView.vue'
 import TxEditor from './components/TxEditor.vue'
 import AppIcon from './components/AppIcon.vue'
 import CatArt from './components/CatArt.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 
 const view = ref('home')
 const editing = ref(null)      // null 关闭；{} 新建；{tx} 编辑
@@ -83,6 +84,7 @@ window.addEventListener('keydown', (e) => {
   const tag = document.activeElement?.tagName
   const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable
   if (e.key === 'Escape') {
+    if (confirmState.open) { answerConfirm(false); return }
     if (editing.value) { editing.value = null; document.activeElement?.blur?.() }
     return
   }
@@ -180,7 +182,16 @@ window.addEventListener('keydown', (e) => {
 
   <TxEditor v-if="editing" :init="editing.tx" @close="editing = null" />
 
-  <div v-if="toast.msg" class="toast num" :key="toast.ts">{{ toast.msg }}</div>
+  <Transition name="toast">
+    <div v-if="toast.msg" class="toast" :key="toast.ts" role="status">
+      <span class="toast__msg num">{{ toast.msg }}</span>
+      <button v-if="toast.action" class="toast__action" @click="toast.action && toast.action()">
+        <AppIcon name="undo" :size="15" />{{ toast.actionLabel }}
+      </button>
+    </div>
+  </Transition>
+
+  <ConfirmDialog />
 </template>
 
 <style scoped>

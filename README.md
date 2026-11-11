@@ -7,7 +7,7 @@
 米白旧报纸 · 手绘多彩图标 · PWA · 微信 / 支付宝账单导入 · GitHub 私有仓库同步 · 自动归类
 
 [![GitHub stars](https://img.shields.io/github/stars/rwzdk/inkledger?style=flat-square&color=gold)](https://github.com/rwzdk/inkledger/stargazers)
-[![version](https://img.shields.io/badge/version-1.8.0-gold?style=flat-square)](./README.md#-更新日志)
+[![version](https://img.shields.io/badge/version-1.9.0-gold?style=flat-square)](./README.md#-更新日志)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold?style=flat-square)](./LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -26,7 +26,7 @@
 - **微信 / 支付宝账单导入**：上传官方导出的账单 CSV，自动识别消费来源账户、按关键词自动归类、按交易单号去重
 - **离线可用**：PWA + Service Worker，记账这件事不需要网络
 
-> 🌐 **在线体验**：[rwzdk.github.io/inkledger/#demo](https://rwzdk.github.io/inkledger/#demo)（`#demo` 会自动载入示例数据；深链 `#stats` / `#settings` / `#add` / `#light` / `#dark` 可直达对应视图或主题）
+> 🌐 **在线体验**：[mindofqc.github.io/inkledger/#demo](https://mindofqc.github.io/inkledger/#demo)（`#demo` 会自动载入示例数据；深链 `#stats` / `#settings` / `#add` / `#light` / `#dark` 可直达对应视图或主题）
 >
 > 另有 Qoder Sites 私有部署：`inkledger-j8vzdjdlheu.qoder.website`（需 Qoder 账号登录访问）
 
@@ -43,6 +43,8 @@
 ## ✨ 功能特性
 
 - 🗒️ **记账**：支出 / 收入 / 转账，二级语义清晰的账户体系（微信零钱、支付宝、现金、银行卡…即「消费来源」）
+- ↩️ **安心操作**：删除账目 / 账户 / 分类 / 周期账单 / 储蓄目标、清空与导入数据均可**一键撤销**；危险操作走主题化「审稿签」确认框，不再用浏览器原生弹窗
+- 🔎 **流水工作台**：四种实时排序（日期 / 金额升降）、批量勾选删除、**保存视图**（把常用筛选 + 排序收藏成快捷方式，跨月复用）
 - 📥 **账单导入**：微信支付、支付宝官方导出的 CSV 一键导入；自动建户（按银行卡尾号识别同一账户）、关键词自动归类、交易单号去重、退款标记
 - 📊 **统计分析**：分类占比环图、近六个月收支趋势、消费来源分布、分类排行与日均支出
 - ☁️ **GitHub 同步**：Fine-grained PAT 授权，自动创建私有数据仓库，多端按 `updatedAt` 合并
@@ -107,6 +109,17 @@ Token 与数据都不会离开你的浏览器到任何第三方服务器（仅 G
 欢迎 Issue 与 PR。提交前请跑 `pnpm test && pnpm build`。
 
 ## 📝 更新日志
+
+### v1.9.0（2026-11-11）
+
+- **feat**：**破坏性操作全面可撤销**——删除单笔 / 批量账目、账户、分类（含级联预算与规则）、周期账单、储蓄目标，以及清空数据、导入备份、一键缴账、目标存入，完成后提示条带「撤销」按钮，一键回到操作前。撤销采用**操作级恢复**而非整库回滚，不会覆盖撤销之前的其它编辑
+- **feat**：**主题化确认框**——所有危险操作改走编辑部「审稿签」弹层（`ConfirmDialog`，`alertdialog` 语义、焦点默认落在取消、Esc 取消 / Enter 确认），替代浏览器原生 `confirm`，与报刊视觉统一
+- **feat**：**流水实时排序**——最新 / 最早在前、金额从高到低 / 从低到高四种排序，抽为纯函数 `lib/ledger.js`（筛选 / 稳定排序 / 按日分组）
+- **feat**：**批量选择删除**——勾选模式 + 全选 + 计数 + 整批删除并整批撤销；切换筛选 / 排序 / 月份自动清空选择，避免误删不可见账目
+- **feat**：**保存视图**——把常用「筛选 + 排序」收藏为命名快捷方式（`lib/views.js`，localStorage `pawpress:views`，上限 12 条，同名覆盖），刻意不含月份以便跨月复用，一键套用 / 移除
+- **style**：新增手绘多彩图标 `undo / sort / bookmark / select`；排版工具条、批量操作条、保存视图缎带、确认框与可撤销提示条均复用报刊设计令牌；打印时自动隐藏这些交互控件
+- **test**：单测扩充至 **140 项断言**（新增流水筛选 / 排序 / 分组、保存视图、撤销 / 确认 / 批量删除三组）
+- PWA 缓存版本升至 `pawpress-v1.9.0`；全部功能、快捷键、深链、打印、数据格式零迁移兼容
 
 ### v1.8.0（2026-11-11）
 

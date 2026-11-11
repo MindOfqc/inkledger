@@ -8,6 +8,8 @@ import { parseCSV } from '../src/lib/csv.js'
 import { isXlsx, parseXlsxRows } from '../src/lib/xlsx.js'
 import { monthDistance, envelopeOf } from '../src/lib/budget.js'
 import { netWorthSeries, replayBalances } from '../src/lib/networth.js'
+import { filterTxs, sortTxs, groupByDay, SORT_OPTIONS } from '../src/lib/ledger.js'
+import { loadViews, saveViews, addView, removeView, viewConditions, describeView, MAX_VIEWS } from '../src/lib/views.js'
 
 const dir = dirname(fileURLToPath(import.meta.url))
 let failed = 0
@@ -322,6 +324,122 @@ ok(rEmpty.txs.find((t) => t.payee === '美团平台商户')?.categoryId === 'c1'
   '空 match 规则：美团仍按关键词 → c1')
 ok(rEmpty.txs.find((t) => t.payee === '张三')?.categoryId === 'i1',
   '空 match 规则：红包仍按关键词 → i1')
+
+/* —— 流水筛选 / 排序 / 分组（lib/ledger.js） —— */
+console.log('\n[流水 ledger]')
+const LT = [
+  { id: 't1', date: '2026-11-05T10:00', type: 'expense', amount: 30, accountId: 'a1', toAccountId: null, payee: '美团外卖', note: '午餐', tags: ['餐饮'] },
+  { id: 't2', date: '2026-11-05T09:00', type: 'expense', amount: 100, accountId: 'a2', toAccountId: null, payee: '滴滴出行', note: '打车', tags: [] },
+  { id: 't3', date: '2026-11-06T10:00', type: 'income', amount: 5000, accountId: 'a1', toAccountId: null, payee: '工资', note: '', tags: ['月薪'] },
+  { id: 't4', date: '2026-10-20T10:00', type: 'expense', amount: 80, accountId: 'a1', toAccountId: null, payee: '瑞幸咖啡', note: '', tags: [] },
+  { id: 't5', date: '2026-11-06T11:00', type: 'transfer', amount: 200, accountId: 'a1', toAccountId: 'a2', payee: '', note: '', tags: [] }
+]
+ok(SORT_OPTIONS.length === 4, '排序选项共 4 种')
+ok(filterTxs(LT, { month: '2026-11' }).length === 4, '按月筛选：11 月 4 笔')
+ok(filterTxs(LT, { month: '2026-11', type: 'expense' }).length === 2, '按类型筛选：11 月支出 2 笔')
+ok(filterTxs(LT, { month: '2026-11', account: 'a2' }).length === 2, '账户筛选含转入：a2 命中 2 笔（含转账）')
+ok(filterTxs(LT, { keyword: '美团' }).length === 1, '关键词命中商户')
+ok(filterTxs(LT, { keyword: '月薪' }).length === 1, '关键词命中标签')
+ok(filterTxs(LT, { keyword: '午餐' }).length === 1, '关键词命中备注')
+ok(sortTxs(LT, 'date-desc')[0].id === 't5', '日期倒序：最新 t5 在前')
+ok(sortTxs(LT, 'date-asc')[0].id === 't4', '日期正序：最早 t4 在前')
+ok(sortTxs(LT, 'amount-desc')[0].id === 't3', '金额降序：5000 在前')
+ok(sortTxs(LT, 'amount-asc')[0].id === 't1', '金额升序：30 在前')
+ok(sortTxs(LT, 'date-desc').length === LT.length, '排序不改变笔数')
+ok(sortTxs(LT, 'date-desc').map((t) => t.id).join() === sortTxs([...LT].reverse(), 'date-desc').map((t) => t.id).join(), '排序稳定：与输入顺序无关')
+ok(sortTxs(LT, 'bogus')[0].id === 't5', '非法排序键回退日期倒序')
+const LG = groupByDay(sortTxs(filterTxs(LT, { month: '2026-11' }), 'date-desc'))
+ok(LG.length === 2, '11 月按日分 2 组')
+ok(LG[0].day === '2026-11-06', '分组保持排序顺序：11-06 在前')
+ok(LG.find((g) => g.day === '2026-11-05').expense === 130, '当日支出汇总 130')
+ok(LG.find((g) => g.day === '2026-11-06').income === 5000, '当日收入汇总 5000')
+
+/* —— 保存视图（lib/views.js） —— */
+console.log('\n[保存视图 views]')
+const memStore = (() => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) } })()
+ok(loadViews(memStore).length === 0, '空存储返回空数组')
+let views = addView([], '大额支出', viewConditions({ filterType: 'expense', sortBy: 'amount-desc' }), 'v1')
+ok(views.length === 1 && views[0].name === '大额支出', '新增视图')
+ok(views[0].filterType === 'expense' && views[0].sortBy === 'amount-desc', '视图保存筛选与排序')
+ok(!('month' in views[0]), '视图不含月份（跨月复用）')
+saveViews(views, memStore)
+ok(loadViews(memStore).length === 1, '持久化后可读回')
+views = addView(views, '大额支出', viewConditions({ filterType: 'income' }), 'v2')
+ok(views.length === 1 && views[0].filterType === 'income', '同名视图覆盖而非追加')
+views = addView(views, '餐饮', viewConditions({ keyword: '餐饮' }), 'v3')
+ok(views[0].name === '餐饮', '新视图排在最前')
+views = removeView(views, 'v2')
+ok(views.length === 1 && views[0].id === 'v3', '按 id 移除视图')
+let emptyNameThrew = false
+try { addView([], '  ', viewConditions({})) } catch { emptyNameThrew = true }
+ok(emptyNameThrew, '空名称抛错')
+let many = []
+for (let i = 0; i < MAX_VIEWS + 3; i++) many = addView(many, '视图' + i, viewConditions({}), 'id' + i)
+ok(many.length === MAX_VIEWS, `视图数量上限 ${MAX_VIEWS}`)
+ok(describeView({ filterType: 'expense', sortBy: 'amount-desc', keyword: '咖啡' }).includes('支出'), '视图描述含类型')
+ok(describeView({ filterType: 'all', sortBy: 'date-desc' }) === '全部账目', '无筛选描述为全部账目')
+const badStore = { getItem: () => '{not json', setItem: () => {} }
+ok(loadViews(badStore).length === 0, '损坏存储安全回退空数组')
+
+/* —— 撤销 / 确认 / 批量删除（store.js，mock localStorage） —— */
+console.log('\n[撤销与确认 store]')
+const memLS = (() => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), clear: () => m.clear() } })()
+globalThis.localStorage = memLS
+const S = await import('../src/store.js')
+const { nextTick } = await import('vue')
+const flush = () => new Promise((r) => setTimeout(r, 0))
+
+S.clearAll()
+const txA = S.addTx({ type: 'expense', amount: 10, date: '2026-11-01T10:00', payee: 'A', accountId: 'acc-cash' })
+const txB = S.addTx({ type: 'expense', amount: 20, date: '2026-11-02T10:00', payee: 'B', accountId: 'acc-cash' })
+const txC = S.addTx({ type: 'income', amount: 30, date: '2026-11-03T10:00', payee: 'C', accountId: 'acc-cash' })
+ok(S.store.txs.length === 3, '初始 3 笔')
+S.removeTx(txB.id)
+ok(S.store.txs.length === 2 && !S.store.txs.some((t) => t.id === txB.id), '删除单笔生效')
+S.undoLast()
+ok(S.store.txs.length === 3 && S.store.txs.some((t) => t.id === txB.id), '撤销恢复单笔')
+ok(S.store.txs.findIndex((t) => t.id === txB.id) === 1, '撤销恢复到原位置')
+S.removeTx(txA.id)
+S.addTx({ type: 'expense', amount: 99, date: '2026-11-04T10:00', payee: 'D', accountId: 'acc-cash' })
+S.undoLast()
+ok(S.store.txs.some((t) => t.id === txA.id), '撤销删除')
+ok(S.store.txs.some((t) => t.payee === 'D'), '操作级撤销：不覆盖删除之后的新增')
+S.removeTxs([txA.id, txC.id])
+ok(S.store.txs.length === 2, '批量删除 2 笔')
+S.undoLast()
+ok(S.store.txs.length === 4, '批量撤销恢复 2 笔')
+ok(S.removeTxs(['nonexistent']) === 0, '批量删除无匹配返回 0')
+const p = S.askConfirm({ title: 'T', message: 'M', danger: true })
+ok(S.confirmState.open && S.confirmState.danger && S.confirmState.title === 'T', '确认框打开并带参数')
+S.answerConfirm(true)
+ok((await p) === true && !S.confirmState.open, '确认后 Promise 解析 true 并关闭')
+const p2 = S.askConfirm({})
+S.answerConfirm(false)
+ok((await p2) === false, '取消解析 false')
+S.upsertGoal({ id: 'goal-test', name: '旅行', target: 1000, saved: 100 })
+const g = S.store.goals.find((x) => x.id === 'goal-test')
+S.contributeGoal(g.id, 50)
+ok(S.store.goals.find((x) => x.id === g.id).saved === 150, '目标存入累加')
+S.undoLast()
+ok(S.store.goals.find((x) => x.id === g.id).saved === 100, '撤销存入回到 100')
+S.removeGoal(g.id)
+ok(!S.store.goals.some((x) => x.id === g.id), '删除目标')
+S.undoLast()
+ok(S.store.goals.some((x) => x.id === g.id), '撤销删除目标')
+S.clearAll()
+ok(S.store.txs.length === 0, '清空账目')
+S.undoLast()
+ok(S.store.txs.length === 4, '撤销清空恢复全部')
+const backup = S.exportJSON()
+S.clearAll()
+S.importJSON(backup)
+ok(S.store.txs.length === 4, '导入备份恢复 4 笔')
+S.undoLast()
+ok(S.store.txs.length === 0, '撤销导入回到清空状态')
+S.showToast('测试', { action: () => {}, actionLabel: '撤销' })
+ok(S.toast.action && S.toast.actionLabel === '撤销', 'toast 携带动作按钮')
+await flush()
+await nextTick()
 
 if (failed) {
   console.error(`\n✗ ${failed} 个断言失败\n`)

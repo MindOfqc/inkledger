@@ -402,6 +402,29 @@ export const ICONS = {
     el('circle', { cx: 8.6, cy: 11, r: .9, fill: S, stroke: 'none' }),
     line('M10.6 6.9c1.4-.4 2.9-.4 4.4 0', { stroke: S, 'stroke-width': 1.6 }),
     el('path', { d: 'M20.2 10.4c1 .2 1.6 1 1.4 2-.1.7-.7 1.2-1.4 1.3', fill: 'none', 'stroke-width': 1.3 })
+  ],
+  // 撤销（回转箭头 + 墨绿弧）
+  "undo": [
+    el('path', { d: 'M8.2 5.4 4.4 9.1l3.8 3.7', fill: 'none', stroke: G, 'stroke-width': 1.8 }),
+    el('path', { d: 'M4.8 9.1h9.4a5.6 5.6 0 0 1 0 11.2H8.6', fill: 'none', stroke: G, 'stroke-width': 1.8 }),
+    el('circle', { cx: 8.2, cy: 5.4, r: 1.15, fill: O, 'stroke-width': 1.2 })
+  ],
+  // 排序（三条递减速线 + 下箭头）
+  "sort": [
+    line('M4 6.4h11', { stroke: B, 'stroke-width': 1.8 }),
+    line('M4 11h8', { stroke: G, 'stroke-width': 1.8 }),
+    line('M4 15.6h5', { stroke: O, 'stroke-width': 1.8 }),
+    el('path', { d: 'M17.4 5.2v13m0 0-2.7-2.8m2.7 2.8 2.7-2.8', fill: 'none', stroke: S, 'stroke-width': 1.7 })
+  ],
+  // 书签 / 保存视图（缎带书签 + 星点）
+  "bookmark": [
+    el('path', { d: 'M7 4.2h10c.6 0 1 .4 1 1v14.6l-6-3.6-6 3.6V5.2c0-.6.4-1 1-1Z', fill: Y }),
+    el('path', { d: 'M12 7.4l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3Z', fill: OD, 'stroke-width': 1.1 })
+  ],
+  // 勾选框 / 批量选择（方框 + 对勾）
+  "select": [
+    el('rect', { x: 4, y: 4, width: 16, height: 16, rx: 4, fill: W }),
+    el('path', { d: 'm8 12.2 2.8 2.8L16.4 9', fill: 'none', stroke: G, 'stroke-width': 2 })
   ]
 }
 

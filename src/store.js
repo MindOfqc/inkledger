@@ -123,26 +123,103 @@ export function persist() {
 }
 watch(store, persist, { deep: true })
 
-/* —— 轻提示 —— */
-export const toast = reactive({ msg: '', ts: 0 })
+/* —— 轻提示：可携带一个动作按钮（如「撤销」） —— */
+export const toast = reactive({ msg: '', ts: 0, action: null, actionLabel: '' })
 let toastTimer = null
-export function showToast(msg) {
+export function showToast(msg, opts = {}) {
   toast.msg = msg
   toast.ts = Date.now()
+  toast.action = typeof opts.action === 'function' ? opts.action : null
+  toast.actionLabel = opts.actionLabel || '撤销'
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => (toast.msg = ''), 2600)
+  const duration = opts.duration || (toast.action ? 6500 : 2600)
+  toastTimer = setTimeout(() => { toast.msg = ''; toast.action = null }, duration)
+}
+
+/* —— 单级撤销：记录「操作级恢复」而非整库快照，避免覆盖撤销前的其它编辑 —— */
+const clone = (v) => JSON.parse(JSON.stringify(v))
+let undoRestore = null
+/** 登记一次可撤销操作；restore 为把数据恢复到操作前的闭包 */
+export function setUndo(restore) {
+  undoRestore = typeof restore === 'function' ? restore : null
+}
+export function undoLast() {
+  if (!undoRestore) return false
+  const restore = undoRestore
+  undoRestore = null
+  restore()
+  toast.msg = ''
+  toast.action = null
+  clearTimeout(toastTimer)
+  showToast('已撤销刚才的操作')
+  return true
+}
+/** 带「撤销」按钮的提示：操作完成后调用 */
+export function showUndoToast(msg) {
+  showToast(msg, { action: undoLast, actionLabel: '撤销' })
+}
+
+/* —— 主题化确认框：全局单例，返回 Promise<boolean> —— */
+export const confirmState = reactive({
+  open: false, title: '', message: '', confirmLabel: '确定', cancelLabel: '取消', danger: false
+})
+let confirmResolve = null
+export function askConfirm(opts = {}) {
+  // 若已有未决确认，先按取消收尾，避免悬挂的 Promise
+  if (confirmResolve) confirmResolve(false)
+  confirmState.title = opts.title || '请确认'
+  confirmState.message = opts.message || ''
+  confirmState.confirmLabel = opts.confirmLabel || '确定'
+  confirmState.cancelLabel = opts.cancelLabel || '取消'
+  confirmState.danger = !!opts.danger
+  confirmState.open = true
+  return new Promise((resolve) => { confirmResolve = resolve })
+}
+export function answerConfirm(ok) {
+  if (!confirmState.open) return
+  confirmState.open = false
+  const resolve = confirmResolve
+  confirmResolve = null
+  if (resolve) resolve(!!ok)
 }
 
 /* —— 交易 —— */
 export function addTx(tx) {
-  store.txs.push({ ...tx, id: tx.id || uid(), updatedAt: Date.now() })
+  const item = { ...tx, id: tx.id || uid(), updatedAt: Date.now() }
+  store.txs.push(item)
+  return item
 }
 export function updateTx(id, patch) {
   const t = store.txs.find((t) => t.id === id)
   if (t) Object.assign(t, patch, { updatedAt: Date.now() })
 }
 export function removeTx(id) {
-  store.txs = store.txs.filter((t) => t.id !== id)
+  const i = store.txs.findIndex((t) => t.id === id)
+  if (i < 0) return false
+  const removed = clone(store.txs[i])
+  store.txs.splice(i, 1)
+  setUndo(() => {
+    if (!store.txs.some((t) => t.id === removed.id)) {
+      store.txs.splice(Math.min(i, store.txs.length), 0, removed)
+    }
+  })
+  return true
+}
+/** 批量删除：一次撤销整批 */
+export function removeTxs(ids) {
+  const idSet = new Set(ids)
+  const removed = []
+  store.txs.forEach((t, i) => { if (idSet.has(t.id)) removed.push({ i, item: clone(t) }) })
+  if (!removed.length) return 0
+  store.txs = store.txs.filter((t) => !idSet.has(t.id))
+  setUndo(() => {
+    for (const { i, item } of removed) {
+      if (!store.txs.some((t) => t.id === item.id)) {
+        store.txs.splice(Math.min(i, store.txs.length), 0, item)
+      }
+    }
+  })
+  return removed.length
 }
 export function existingSourceKeys() {
   return new Set(store.txs.map((t) => t.sourceKey).filter(Boolean))
@@ -160,7 +237,15 @@ export function removeAccount(id) {
     showToast('该账户下仍有账目，无法删除')
     return false
   }
-  store.accounts = store.accounts.filter((a) => a.id !== id)
+  const i = store.accounts.findIndex((a) => a.id === id)
+  if (i < 0) return false
+  const removed = clone(store.accounts[i])
+  store.accounts.splice(i, 1)
+  setUndo(() => {
+    if (!store.accounts.some((a) => a.id === removed.id)) {
+      store.accounts.splice(Math.min(i, store.accounts.length), 0, removed)
+    }
+  })
   return true
 }
 
@@ -176,9 +261,21 @@ export function removeCategory(id) {
     showToast('该分类下仍有账目，无法删除')
     return false
   }
-  store.categories = store.categories.filter((c) => c.id !== id)
+  const i = store.categories.findIndex((c) => c.id === id)
+  if (i < 0) return false
+  const cat = clone(store.categories[i])
+  const budgets = clone(store.budgets.filter((b) => b.id === id))
+  const rules = clone(store.rules.filter((r) => r.categoryId === id))
+  store.categories.splice(i, 1)
   store.budgets = store.budgets.filter((b) => b.id !== id)
   store.rules = store.rules.filter((r) => r.categoryId !== id)
+  setUndo(() => {
+    if (!store.categories.some((c) => c.id === cat.id)) {
+      store.categories.splice(Math.min(i, store.categories.length), 0, cat)
+    }
+    for (const b of budgets) if (!store.budgets.some((x) => x.id === b.id)) store.budgets.push(b)
+    for (const r of rules) if (!store.rules.some((x) => x.id === r.id)) store.rules.push(r)
+  })
   return true
 }/* —— 预算:分类月度预算(b.id 即 categoryId,amount 为每月额度) —— */
 export function setBudget(categoryId, amount) {
@@ -279,7 +376,16 @@ export function upsertRecurring(r) {
   else store.recurring.push({ ...item, id: r.id || uid(), createdAt: Date.now() })
 }
 export function removeRecurring(id) {
-  store.recurring = store.recurring.filter((r) => r.id !== id)
+  const i = store.recurring.findIndex((r) => r.id === id)
+  if (i < 0) return false
+  const removed = clone(store.recurring[i])
+  store.recurring.splice(i, 1)
+  setUndo(() => {
+    if (!store.recurring.some((r) => r.id === removed.id)) {
+      store.recurring.splice(Math.min(i, store.recurring.length), 0, removed)
+    }
+  })
+  return true
 }
 
 /** 待缴账单:active 且 30 天内到期(含逾期),按到期日排序 */
@@ -320,10 +426,16 @@ export function payRecurring(id) {
     updatedAt: Date.now()
   }
   store.txs.push(tx)
+  const prevNext = r.nextDate
   let next = r.nextDate
   while (next <= nowDateKey()) next = advanceCycle(next, r.cycle)
   r.nextDate = next
   r.updatedAt = Date.now()
+  setUndo(() => {
+    store.txs = store.txs.filter((t) => t.id !== tx.id)
+    const cur = store.recurring.find((x) => x.id === id)
+    if (cur) { cur.nextDate = prevNext; cur.updatedAt = Date.now() }
+  })
   return tx
 }
 
@@ -340,7 +452,16 @@ export function upsertGoal(g) {
   else store.goals.push({ ...item, id: g.id || uid(), createdAt: Date.now() })
 }
 export function removeGoal(id) {
-  store.goals = store.goals.filter((g) => g.id !== id)
+  const i = store.goals.findIndex((g) => g.id === id)
+  if (i < 0) return false
+  const removed = clone(store.goals[i])
+  store.goals.splice(i, 1)
+  setUndo(() => {
+    if (!store.goals.some((g) => g.id === removed.id)) {
+      store.goals.splice(Math.min(i, store.goals.length), 0, removed)
+    }
+  })
+  return true
 }
 /** 存入:仅累加目标进度,不影响账户余额;仅接受正数 */
 export function contributeGoal(id, amount) {
@@ -348,8 +469,13 @@ export function contributeGoal(id, amount) {
   if (!g) return null
   const v = Math.round((Number(amount) || 0) * 100) / 100
   if (!(v > 0)) return null
+  const prevSaved = g.saved
   g.saved = Math.round(((Number(g.saved) || 0) + v) * 100) / 100
   g.updatedAt = Date.now()
+  setUndo(() => {
+    const cur = store.goals.find((x) => x.id === id)
+    if (cur) { cur.saved = prevSaved; cur.updatedAt = Date.now() }
+  })
   return g
 }
 
@@ -447,9 +573,26 @@ export function exportJSON() {
     budgets: store.budgets, recurring: store.recurring, goals: store.goals, rules: store.rules
   }, null, 2)
 }
+/** 整库快照（导入 / 清空这类全量替换用，撤销即整体还原） */
+function snapshotAll() {
+  return clone({
+    txs: store.txs, accounts: store.accounts, categories: store.categories,
+    budgets: store.budgets, recurring: store.recurring, goals: store.goals, rules: store.rules
+  })
+}
+function restoreAll(snap) {
+  store.txs = snap.txs
+  store.accounts = snap.accounts
+  store.categories = snap.categories
+  store.budgets = snap.budgets
+  store.recurring = snap.recurring
+  store.goals = snap.goals
+  store.rules = snap.rules
+}
 export function importJSON(text) {
   const data = JSON.parse(text)
   if (!Array.isArray(data.txs) || !Array.isArray(data.accounts)) throw new Error('文件格式不正确')
+  const snap = snapshotAll()
   store.txs = data.txs
   store.accounts = data.accounts
   store.categories = data.categories?.length ? data.categories : defaultState().categories
@@ -457,9 +600,11 @@ export function importJSON(text) {
   store.recurring = Array.isArray(data.recurring) ? data.recurring : []
   store.goals = Array.isArray(data.goals) ? data.goals : []
   store.rules = Array.isArray(data.rules) ? data.rules : []
-  showToast('数据已导入')
+  setUndo(() => restoreAll(snap))
+  showUndoToast('数据已导入')
 }
 export function clearAll() {
+  const snap = snapshotAll()
   const base = defaultState()
   store.txs = []
   store.accounts = base.accounts
@@ -468,7 +613,8 @@ export function clearAll() {
   store.recurring = []
   store.goals = []
   store.rules = []
-  showToast('已清空全部账目')
+  setUndo(() => restoreAll(snap))
+  showUndoToast('已清空全部账目')
 }
 
 /* —— 合并（同步用）：按 id 合并，updatedAt 新者胜 —— */
@@ -542,7 +688,16 @@ export function upsertRule(r) {
   else store.rules.push({ ...item, id: r.id || uid(), createdAt: Date.now() })
 }
 export function removeRule(id) {
-  store.rules = store.rules.filter((r) => r.id !== id)
+  const i = store.rules.findIndex((r) => r.id === id)
+  if (i < 0) return false
+  const removed = clone(store.rules[i])
+  store.rules.splice(i, 1)
+  setUndo(() => {
+    if (!store.rules.some((r) => r.id === removed.id)) {
+      store.rules.splice(Math.min(i, store.rules.length), 0, removed)
+    }
+  })
+  return true
 }
 export function toggleRule(id, on) {
   const r = store.rules.find((x) => x.id === id)

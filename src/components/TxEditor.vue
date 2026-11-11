@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { store, addTx, updateTx, removeTx, showToast, allTags } from '../store.js'
+import { store, addTx, updateTx, removeTx, showToast, showUndoToast, askConfirm, allTags } from '../store.js'
 import { fmtMoney, toLocalISO } from '../lib/format.js'
 import { applyRules } from '../lib/rules.js'
 import DataIcon from './DataIcon.vue'
@@ -100,12 +100,18 @@ function save() {
   emit('close')
 }
 
-function del() {
-  if (props.init?.id && confirm('确定删除这笔账目？')) {
-    removeTx(props.init.id)
-    showToast('已删除')
-    emit('close')
-  }
+async function del() {
+  if (!props.init?.id) return
+  const ok = await askConfirm({
+    title: '删除这笔账目？',
+    message: `「${props.init.payee || props.init.note || '这笔账目'}」将被移入回收站，稍后可在提示里撤销。`,
+    confirmLabel: '删除',
+    danger: true
+  })
+  if (!ok) return
+  removeTx(props.init.id)
+  showUndoToast('已删除这笔账目')
+  emit('close')
 }
 </script>
 

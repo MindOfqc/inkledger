@@ -97,6 +97,34 @@ const MEASURE = (s) => JSON.parse(s)
 let fail = 0
 function check(label, cond, extra = '') { console.log(`[${cond ? 'ok' : 'FAIL'}] ${label}${extra ? ' · ' + extra : ''}`); if (!cond) fail++ }
 
+// —— 真实交互助手：CDP 派发鼠标 / 键盘事件，走 Vue 真实事件链路 ——
+const rectOf = async (selector) => evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`)
+async function clickSel(selector) {
+  const p = await rectOf(selector)
+  if (!p) throw new Error('click: 未找到 ' + selector)
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button: 'left', clickCount: 1 })
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'left', clickCount: 1 })
+  await sleep(200)
+}
+async function setSelect(selector, value) {
+  await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('change', { bubbles: true })); })()`)
+  await sleep(250)
+}
+async function setInput(selector, value) {
+  await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); el.value = ${JSON.stringify(value)}; el.dispatchEvent(new Event('input', { bubbles: true })); })()`)
+  await sleep(200)
+}
+async function pressKey(key, code, vk) {
+  const base = { key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk }
+  await send('Input.dispatchKeyEvent', { type: 'keyDown', ...base })
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', ...base })
+  await sleep(280)
+}
+const countTx = () => evaluate(`document.querySelectorAll('.tx').length`)
+const archiveCount = () => evaluate(`(() => { const m = (document.querySelector('.edition__count') || {}).textContent || ''; return parseInt(m, 10) || 0; })()`)
+const toastHasUndo = () => evaluate(`!!document.querySelector('.toast__action')`)
+const confirmOpen = () => evaluate(`!!document.querySelector('.overlay--confirm')`)
+
 await waitReady(base); await waitReady(`http://localhost:${CDP}/json/version`)
 await connect()
 
@@ -148,6 +176,122 @@ check('移动投稿单 无报错', errors.length === 0, errors.join(' | '))
 r = MEASURE(await goto('#demo/dark', desk))
 check('夜班主题生效', r.theme === 'dark', r.theme)
 check('夜班首页 报头猫加载', r.cats.some((c) => c.alt.includes('端坐读报') && c.ok))
+
+/* ===== 真实交互验证（桌面 · 全新示例数据，基线确定） ===== */
+await goto('#demo', { ...desk, clearStorage: true })
+const N0 = await archiveCount()
+check('交互基线 有存档', N0 > 0, `${N0} 笔`)
+
+// 1) 实时排序：金额降序后首行金额 ≥ 次行
+await setSelect('.list-controls select', 'amount-desc')
+const amts = await evaluate(`[...document.querySelectorAll('.tx__amount')].slice(0, 2).map(e => parseFloat(e.textContent.replace(/[^\\d.]/g, '')) || 0)`)
+check('排序 金额降序生效', amts.length === 2 && amts[0] >= amts[1], amts.join(' / '))
+await setSelect('.list-controls select', 'date-desc')
+
+// 2) 保存视图：筛选支出 + 金额降序 → 收藏 → 重置 → 套用
+await evaluate(`[...document.querySelectorAll('.chips .chip')].find(c => c.textContent.trim() === '支出').click()`)
+await sleep(200)
+await setSelect('.list-controls select', 'amount-desc')
+await evaluate(`[...document.querySelectorAll('.list-controls .chip')].find(c => c.textContent.includes('保存视图')).click()`)
+await sleep(200)
+await setInput('.saved-view__input', '大额支出')
+await evaluate(`document.querySelector('.saved-view--form .btn--gold').click()`)
+await sleep(250)
+check('保存视图 收藏成功', await evaluate(`!!document.querySelector('.saved-view__apply')`))
+// 重置筛选后套用
+await evaluate(`[...document.querySelectorAll('.chips .chip')].find(c => c.textContent.trim() === '全部').click()`)
+await sleep(150)
+await setSelect('.list-controls select', 'date-desc')
+await evaluate(`document.querySelector('.saved-view__apply').click()`)
+await sleep(300)
+const viewState = await evaluate(`(() => ({ type: [...document.querySelectorAll('.chips .chip')].find(c => c.classList.contains('chip--on'))?.textContent.trim(), sort: document.querySelector('.list-controls select').value }))()`)
+check('保存视图 套用恢复筛选', viewState.type === '支出', JSON.stringify(viewState))
+check('保存视图 套用恢复排序', viewState.sort === 'amount-desc', viewState.sort)
+// 移除视图（确认框）
+await evaluate(`document.querySelector('.saved-view__del').click()`)
+await sleep(250)
+check('移除视图 弹出确认框', await confirmOpen())
+await evaluate(`document.querySelector('.confirm__actions .btn--danger-solid').click()`)
+await sleep(300)
+check('移除视图 确认后消失', !(await evaluate(`!!document.querySelector('.saved-view__apply')`)))
+// 还原全部筛选
+await evaluate(`[...document.querySelectorAll('.chips .chip')].find(c => c.textContent.trim() === '全部').click()`)
+await sleep(150)
+await setSelect('.list-controls select', 'date-desc')
+
+// 3) 批量选择删除 + 撤销
+await evaluate(`[...document.querySelectorAll('.list-controls .chip')].find(c => c.textContent.includes('批量选择')).click()`)
+await sleep(250)
+check('批量 进入选择模式', await evaluate(`!!document.querySelector('.bulk-bar')`))
+await evaluate(`document.querySelector('.bulk-bar__all input').click()`)
+await sleep(250)
+const selCount = await evaluate(`document.querySelectorAll('.tx-row--sel').length`)
+check('批量 全选命中', selCount > 0, `${selCount} 笔`)
+await evaluate(`document.querySelector('.bulk-bar .btn--danger').click()`)
+await sleep(250)
+check('批量删除 弹出确认框', await confirmOpen())
+await evaluate(`document.querySelector('.confirm__actions .btn--danger-solid').click()`)
+await sleep(350)
+const N1 = await archiveCount()
+check('批量删除 存档减少', N1 === N0 - selCount, `${N0} → ${N1}`)
+check('批量删除 提示带撤销', await toastHasUndo())
+await evaluate(`document.querySelector('.toast__action').click()`)
+await sleep(350)
+const N2 = await archiveCount()
+check('批量撤销 存档恢复', N2 === N0, `${N1} → ${N2}`)
+
+// 4) 投稿单删除单笔 + 撤销
+await evaluate(`document.querySelector('.tx').click()`)
+await sleep(350)
+check('投稿单 编辑弹层打开', await evaluate(`!!document.querySelector('.overlay .sheet')`))
+await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
+await sleep(250)
+check('投稿单删除 弹出确认框', await confirmOpen())
+// Esc 取消确认（焦点默认在取消钮）
+await pressKey('Escape', 'Escape', 27)
+await sleep(250)
+check('确认框 Esc 取消', !(await confirmOpen()))
+check('Esc 取消后投稿单仍在', await evaluate(`!!document.querySelector('.overlay .sheet')`))
+// 再次删除并确认
+await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
+await sleep(250)
+await evaluate(`document.querySelector('.confirm__actions .btn--danger-solid').click()`)
+await sleep(350)
+const N3 = await archiveCount()
+check('投稿单删除 存档减一', N3 === N0 - 1, `${N0} → ${N3}`)
+check('投稿单删除 提示带撤销', await toastHasUndo())
+await evaluate(`document.querySelector('.toast__action').click()`)
+await sleep(350)
+check('投稿单撤销 存档恢复', (await archiveCount()) === N0)
+
+// 5) 新建投稿（算式金额）端到端
+await evaluate(`[...document.querySelectorAll('.tabbar__item, .sidenav__item')].find(b => b.textContent.includes('记一笔'))?.click()`)
+await sleep(350)
+check('新建 投稿单打开', await evaluate(`!!document.querySelector('.overlay .sheet')`))
+await setInput('.amount-box__input', '12+8')
+await evaluate(`document.querySelector('.amount-box__input').dispatchEvent(new Event('blur'))`)
+await sleep(200)
+const normAmt = await evaluate(`document.querySelector('.amount-box__input').value`)
+check('新建 算式金额归一', normAmt === '20' || normAmt === '20.00', normAmt)
+await evaluate(`document.querySelector('.overlay .sheet .actions .btn--gold').click()`)
+await sleep(350)
+check('新建 投稿入账存档加一', (await archiveCount()) === N0 + 1)
+// 删除刚建的投稿以回到基线（不撤销）
+await evaluate(`document.querySelector('.tx').click()`)
+await sleep(300)
+await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
+await sleep(200)
+await evaluate(`document.querySelector('.confirm__actions .btn--danger-solid').click()`)
+await sleep(300)
+check('端到端 回到基线存档', (await archiveCount()) === N0, `${await archiveCount()}`)
+check('交互全程无报错', errors.length === 0, errors.join(' | '))
+
+// 6) 移动视口批量条不溢出
+r = MEASURE(await goto('#demo', mob))
+await evaluate(`[...document.querySelectorAll('.list-controls .chip')].find(c => c.textContent.includes('批量选择')).click()`)
+await sleep(300)
+check('移动 批量条无横向溢出', await evaluate(`document.documentElement.scrollWidth <= window.innerWidth + 1`))
+check('移动 批量条可见', await evaluate(`!!document.querySelector('.bulk-bar')`))
 
 cleanup()
 console.log(fail === 0 ? '\nALL DOM PROBES OK' : `\n${fail} 项失败`)

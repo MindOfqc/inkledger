@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import {
-  store, showToast, upsertAccount, removeAccount, upsertCategory, removeCategory, setBudget, budgetOf, toggleCarryover,
+  store, showToast, showUndoToast, askConfirm, upsertAccount, removeAccount, upsertCategory, removeCategory, setBudget, budgetOf, toggleCarryover,
   upsertRecurring, removeRecurring, upsertGoal, removeGoal, upsertRule, removeRule, toggleRule,
   importFromText, importFromRows, exportJSON, importJSON, clearAll, loadSample, balanceOf,
   syncToGitHub, defaultRepoName
@@ -167,11 +167,17 @@ function editRule(r) {
   if (kind) ruleKind.value = kind
   ruleForm.value = { ...r }
 }
-function delRule() {
+async function delRule() {
   if (!ruleForm.value?.id) return
-  if (!confirm('确定删除这条规则?')) return
+  const ok = await askConfirm({
+    title: '删除这条归类规则？',
+    message: `匹配「${ruleForm.value.match}」的规则将被删除，可在提示里撤销。`,
+    confirmLabel: '删除', danger: true
+  })
+  if (!ok) return
   removeRule(ruleForm.value.id)
   ruleForm.value = null
+  showUndoToast('已删除规则')
 }
 function saveRule() {
   const f = ruleForm.value
@@ -215,10 +221,51 @@ async function onBackupFile(e) {
   const file = e.target.files?.[0]
   e.target.value = ''
   if (!file) return
+  const ok = await askConfirm({
+    title: '用备份覆盖当前数据？',
+    message: '导入会替换本机现有的全部账目、账户与分类。导入后可在提示里点「撤销」恢复。',
+    confirmLabel: '导入并覆盖', danger: true
+  })
+  if (!ok) return
   try { importJSON(await file.text()) } catch (err) { showToast('导入失败：' + err.message) }
 }
-function doClear() {
-  if (confirm('确定清空全部账目？账户与分类会恢复默认（该操作不影响已同步到 GitHub 的数据）')) clearAll()
+async function doClear() {
+  const ok = await askConfirm({
+    title: '清空全部账目？',
+    message: '账户与分类会恢复默认，不影响已同步到 GitHub 的数据。清空后可在提示里点「撤销」找回。',
+    confirmLabel: '清空', danger: true
+  })
+  if (ok) clearAll()
+}
+
+/* —— 各编辑弹层的删除入口：统一走主题化确认 + 撤销 —— */
+async function delAccount() {
+  const f = accForm.value
+  if (!f?.id) return
+  const ok = await askConfirm({ title: '删除这个账户？', message: `「${f.name}」将被删除，可在提示里撤销。`, confirmLabel: '删除', danger: true })
+  if (!ok) return
+  if (removeAccount(f.id)) { accForm.value = null; showUndoToast('已删除账户') }
+}
+async function delCategory() {
+  const f = catForm.value
+  if (!f?.id) return
+  const ok = await askConfirm({ title: '删除这个分类？', message: `「${f.name}」及其预算、归类规则会一并删除，可在提示里撤销。`, confirmLabel: '删除', danger: true })
+  if (!ok) return
+  if (removeCategory(f.id)) { catForm.value = null; showUndoToast('已删除分类') }
+}
+async function delGoal() {
+  const f = goalForm.value
+  if (!f?.id) return
+  const ok = await askConfirm({ title: '删除这个储蓄目标？', message: `「${f.name}」的进度将被删除，可在提示里撤销。`, confirmLabel: '删除', danger: true })
+  if (!ok) return
+  if (removeGoal(f.id)) { goalForm.value = null; showUndoToast('已删除储蓄目标') }
+}
+async function delRecurring() {
+  const f = recForm.value
+  if (!f?.id) return
+  const ok = await askConfirm({ title: '删除这笔周期账单？', message: `「${f.name}」将不再提醒，可在提示里撤销。`, confirmLabel: '删除', danger: true })
+  if (!ok) return
+  if (removeRecurring(f.id)) { recForm.value = null; showUndoToast('已删除周期账单') }
 }
 </script>
 
@@ -408,7 +455,7 @@ function doClear() {
     <span class="pencil-note appearance-note">日刊是米白旧报纸，夜班是编辑部的台灯。</span>
   </section>
 
-  <p class="about serif">爪爪日报 PawPress · v1.8.0 · 猫咪编辑部出品 · 数据自持</p>
+  <p class="about serif">爪爪日报 PawPress · v1.9.0 · 猫咪编辑部出品 · 数据自持</p>
 
   <!-- 账户编辑弹层 -->
   <Teleport to="body">
@@ -426,7 +473,7 @@ function doClear() {
           <input v-model="accForm.initialBalance" class="input num" type="number" step="0.01" /></label>
         <div class="row row--end" style="margin-top: 18px">
           <template v-if="accForm.id">
-            <button class="btn btn--danger" @click="removeAccount(accForm.id) && (accForm = null)">删除</button>
+            <button class="btn btn--danger" @click="delAccount()"><AppIcon name="trash" :size="15" />删除</button>
             <span style="flex: 1"></span>
           </template>
           <button class="btn" @click="accForm = null">取消</button>
@@ -480,7 +527,7 @@ function doClear() {
         </div>
         <div class="row row--end" style="margin-top: 18px">
           <template v-if="goalForm.id">
-            <button class="btn btn--danger" @click="removeGoal(goalForm.id) || (goalForm = null)">删除</button>
+            <button class="btn btn--danger" @click="delGoal()"><AppIcon name="trash" :size="15" />删除</button>
             <span style="flex: 1"></span>
           </template>
           <button class="btn" @click="goalForm = null">取消</button>
@@ -525,7 +572,7 @@ function doClear() {
         </div>
         <div class="row row--end" style="margin-top: 18px">
           <template v-if="recForm.id">
-            <button class="btn btn--danger" @click="removeRecurring(recForm.id) || (recForm = null)">删除</button>
+            <button class="btn btn--danger" @click="delRecurring()"><AppIcon name="trash" :size="15" />删除</button>
             <span style="flex: 1"></span>
           </template>
           <button class="btn" @click="recForm = null">取消</button>
@@ -567,7 +614,7 @@ function doClear() {
           </div></label>
         <div class="row row--end" style="margin-top: 18px">
           <template v-if="catForm.id">
-            <button class="btn btn--danger" @click="removeCategory(catForm.id) && (catForm = null)">删除</button>
+            <button class="btn btn--danger" @click="delCategory()"><AppIcon name="trash" :size="15" />删除</button>
             <span style="flex: 1"></span>
           </template>
           <button class="btn" @click="catForm = null">取消</button>

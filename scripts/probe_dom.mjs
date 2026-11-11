@@ -247,16 +247,32 @@ check('投稿单 编辑弹层打开', await evaluate(`!!document.querySelector('
 await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
 await sleep(250)
 check('投稿单删除 弹出确认框', await confirmOpen())
-// Esc 取消确认（焦点默认在取消钮）
+// 焦点默认落在「取消」
+const focusedCancel = await evaluate(`document.activeElement === document.querySelector('.confirm__actions .btn')`)
+check('确认框 焦点默认在取消', focusedCancel)
+// 焦点在取消时按回车 = 取消，绝不触发危险操作
+await pressKey('Enter', 'Enter', 13)
+await sleep(250)
+check('确认框 取消态回车不确认', !(await confirmOpen()))
+check('回车取消后存档未变', (await archiveCount()) === N0)
+check('回车取消后投稿单仍在', await evaluate(`!!document.querySelector('.overlay .sheet')`))
+// 重新打开，Esc 取消确认
+await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
+await sleep(250)
 await pressKey('Escape', 'Escape', 27)
 await sleep(250)
 check('确认框 Esc 取消', !(await confirmOpen()))
 check('Esc 取消后投稿单仍在', await evaluate(`!!document.querySelector('.overlay .sheet')`))
-// 再次删除并确认
+// 再次删除：Tab 到「确定」再回车才确认
 await evaluate(`document.querySelector('.overlay .sheet .actions .btn--danger').click()`)
 await sleep(250)
-await evaluate(`document.querySelector('.confirm__actions .btn--danger-solid').click()`)
+await pressKey('Tab', 'Tab', 9)
+await sleep(120)
+const focusedConfirm = await evaluate(`document.activeElement === document.querySelector('.confirm__actions .btn--danger-solid')`)
+check('确认框 Tab 移到确定', focusedConfirm)
+await pressKey('Enter', 'Enter', 13)
 await sleep(350)
+check('确认框 确定态回车确认', !(await confirmOpen()))
 const N3 = await archiveCount()
 check('投稿单删除 存档减一', N3 === N0 - 1, `${N0} → ${N3}`)
 check('投稿单删除 提示带撤销', await toastHasUndo())

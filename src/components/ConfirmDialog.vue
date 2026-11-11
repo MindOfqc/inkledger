@@ -5,17 +5,30 @@ import AppIcon from './AppIcon.vue'
 import CatArt from './CatArt.vue'
 
 const cancelBtn = ref(null)
-// 打开时把焦点移到「取消」，避免回车误触危险操作
+let lastFocused = null
+// 打开时记录触发元素并把焦点移到「取消」，避免回车误触危险操作；关闭后归还焦点
 watch(() => confirmState.open, async (open) => {
   if (open) {
+    lastFocused = document.activeElement
     await nextTick()
     cancelBtn.value?.focus()
+  } else if (lastFocused && typeof lastFocused.focus === 'function') {
+    const el = lastFocused
+    lastFocused = null
+    el.focus()
   }
 })
 function onKeydown(e) {
   if (!confirmState.open) return
-  if (e.key === 'Escape') { e.stopPropagation(); answerConfirm(false) }
-  else if (e.key === 'Enter') { e.stopPropagation(); answerConfirm(true) }
+  if (e.key === 'Escape') { e.stopPropagation(); answerConfirm(false); return }
+  if (e.key === 'Enter') {
+    // 回车激活当前焦点按钮：默认焦点在「取消」→ 取消；Tab 到「确定」→ 确认。
+    // 显式处理并阻止原生激活，避免焦点竞态下误触危险操作。
+    e.preventDefault()
+    e.stopPropagation()
+    const confirmBtn = document.querySelector('.confirm__actions .btn--danger-solid, .confirm__actions .btn--gold')
+    answerConfirm(document.activeElement === confirmBtn)
+  }
 }
 </script>
 

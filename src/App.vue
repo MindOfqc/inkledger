@@ -178,11 +178,19 @@ function markGuideDone() {
     localStorage.setItem(GUIDE_KEY, JSON.stringify(m))
   } catch { /* 隐私模式等场景忽略 */ }
 }
+/**
+ * 深链意图：URL 已点名某个非看板视图（#chat / #profile / #admin 等）。
+ * 指引首步会 navigate 到看板，若此时自动开播就会把深链来的人拽走，故让路。
+ */
+const DEEP_LINK_VIEWS = ['home', 'stats', 'chat', 'profile', 'admin', 'settings']
+const hasDeepLinkIntent = () => DEEP_LINK_VIEWS.some((k) => location.hash.includes(k))
+
 function maybeStartGuide() {
   const u = getCachedUser()
   if (!u || guideDoneFor(u.id)) return
   clearTimeout(guideTimer)
   guideTimer = setTimeout(() => {
+    if (hasDeepLinkIntent()) return
     if (authed.value && !editing.value) guideOn.value = true
   }, 700)
 }

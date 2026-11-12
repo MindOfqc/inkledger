@@ -9,7 +9,7 @@
 米白旧报纸 · 手绘多彩图标 · PWA · 微信 / 支付宝账单导入 · GitHub 私有仓库同步 · 自动归类
 
 [![GitHub stars](https://img.shields.io/github/stars/MindOfqc/inkledger?style=flat-square&color=gold)](https://github.com/MindOfqc/inkledger/stargazers)
-[![version](https://img.shields.io/badge/version-1.12.0-gold?style=flat-square)](./README.md#-更新日志)
+[![version](https://img.shields.io/badge/version-1.12.1-gold?style=flat-square)](./README.md#-更新日志)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold?style=flat-square)](./LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -119,6 +119,11 @@ Token 与数据都不会离开你的浏览器到任何第三方服务器（仅 G
 欢迎 Issue 与 PR。提交前请跑 `pnpm test && pnpm build`。
 
 ## 📝 更新日志
+
+### v1.12.1（2026-11-12）
+
+- **fix**：新账号首次登录时自动播放的使用指引会把 `#chat` / `#profile` / `#admin` 等深链强行拽回看板（指引首步 `navigate('dashboard')`）；现在检测到 URL 已点名非看板视图就让路，深链直达目标页，指引仍可在设置页手动重看
+- **fix**：对话室历史来信的头像与昵称改为实时跟随读者档案（后端 `chatList` JOIN `ml_users` 取 `live_nickname` / `live_avatar`），改了资料后旧消息里的形象一起换装，不再停留在发言当时的快照
 
 ### v1.12.0（2026-11-12）
 

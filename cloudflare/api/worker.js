@@ -675,15 +675,16 @@ async function chatList(request, env, url) {
   if (limitRaw && /^\d+$/.test(limitRaw)) limit = Math.min(200, Math.max(1, Number(limitRaw)));
   const admins = adminEmails(env);
   const result = await env.DB.prepare(
-    "SELECT c.id, c.user_id, c.nickname, c.avatar, c.content, c.created_at, u.email, u.is_admin FROM ml_chat_messages c LEFT JOIN ml_users u ON u.id = c.user_id ORDER BY c.created_at DESC LIMIT ?",
+    "SELECT c.id, c.user_id, c.nickname, c.avatar, c.content, c.created_at, u.email, u.is_admin, u.nickname AS live_nickname, u.avatar AS live_avatar FROM ml_chat_messages c LEFT JOIN ml_users u ON u.id = c.user_id ORDER BY c.created_at DESC LIMIT ?",
   )
     .bind(limit)
     .all();
   const messages = (result.results || []).reverse().map((r) => ({
     id: r.id,
     userId: r.user_id,
-    nickname: r.nickname,
-    avatar: r.avatar || "",
+    // 昵称与头像实时跟随读者档案：改了资料，历史来信里的形象也一起换装
+    nickname: r.live_nickname || r.nickname,
+    avatar: r.live_avatar || r.avatar || "",
     content: r.content,
     createdAt: r.created_at,
     isAdmin: Number(r.is_admin) === 1 || admins.has(String(r.email || "").toLowerCase()),

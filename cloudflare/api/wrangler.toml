@@ -1,0 +1,28 @@
+name = "meowledger-api"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+workers_dev = true
+
+# 自定义域名（与 hot-radar 同一托管 zone）；workers.dev 保留为备用线路
+routes = [
+  { pattern = "meowledger-api.mindofqc.dpdns.org", custom_domain = true }
+]
+
+[vars]
+MAIL_SENDER_NAME = "喵账本"
+ENVIRONMENT = "production"
+# 管理员邮箱：该邮箱的账号自动成为管理员，对话室高亮 + 可见平台看板。多个用逗号分隔。
+ADMIN_EMAIL = "235173498@qq.com"
+
+# 执行 `npx wrangler@4 d1 create meowledger` 后，把输出的 database_id 替换到这里。
+# 本地 `npx wrangler@4 dev` 可以使用占位值；远程部署前必须替换，否则 deploy 会报错。
+[[d1_databases]]
+binding = "DB"
+database_name = "meowledger"
+database_id = "83d16f47-6f7f-4d61-82cb-0ff1b245a3e3"
+migrations_dir = "migrations"
+
+# 机密配置（不要写进本文件，用 secret 配置）：
+#   npx wrangler@4 secret put MAIL_USER   # QQ 邮箱地址，如 235173498@qq.com
+#   npx wrangler@4 secret put MAIL_PASS   # QQ 邮箱 SMTP 授权码（不是 QQ 密码）
+# 本地开发则在 .dev.vars 中写同名键值（可从 .dev.vars.example 复制）。

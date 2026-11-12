@@ -9,7 +9,7 @@
 米白旧报纸 · 手绘多彩图标 · PWA · 微信 / 支付宝账单导入 · GitHub 私有仓库同步 · 自动归类
 
 [![GitHub stars](https://img.shields.io/github/stars/MindOfqc/inkledger?style=flat-square&color=gold)](https://github.com/MindOfqc/inkledger/stargazers)
-[![version](https://img.shields.io/badge/version-1.10.1-gold?style=flat-square)](./README.md#-更新日志)
+[![version](https://img.shields.io/badge/version-1.12.0-gold?style=flat-square)](./README.md#-更新日志)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold?style=flat-square)](./LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?style=flat-square&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -23,12 +23,16 @@
 
 喵账本（MeowLedger）是一个**部署在哪里都能跑**的个人记账平台。它用「卡通小猫 × 复古报刊编辑部」的视觉语言来记账：本月账本是收支结余总览，统计报表是分类占比与趋势，「记一笔」是一张记账单，手绘记账助手「墨墨」替你核对每一笔——报刊只是它的样子，记账才是它做的事。
 
-- **纯静态**：构建产物只是一堆 HTML/JS/CSS，任何静态托管（Qoder Sites、Cloudflare Pages、Vercel、GitHub Pages…）免费部署，永不担心服务停机
-- **数据自持**：账单保存在浏览器本地，可随时同步到你自己的 **GitHub 私有仓库**——不经过任何第三方服务器，天然带版本历史
+- **纯静态前端**：构建产物只是一堆 HTML/JS/CSS，任何静态托管（Qoder Sites、Cloudflare Pages、Vercel、GitHub Pages…）免费部署
+- **云端账本**：邮箱验证码注册 / 登录（QQ 邮箱 SMTP 发信），数据存 Cloudflare D1，手机电脑自动同步；离线照常记账，联网自动补同步
+- **数据自持**：也可不登录纯本地使用，或同步到你自己的 **GitHub 私有仓库**作备用导出——天然带版本历史
 - **微信 / 支付宝账单导入**：上传官方导出的账单 CSV，自动识别消费来源账户、按关键词自动归类、按交易单号去重
+- **读者档案**：改昵称 / 头像 / 个性签名，头像可上传照片（本地压到 96×96）、选内置墨墨贴纸或 emoji，直接存进 D1，不依赖图床
+- **读者对话室**：全站读者共用一间聊天室，15 秒增量轮询、2 秒发言冷却、500 字上限；管理员发言带金箔高亮与「主编」印章
+- **平台看板（管理员）**：注册读者 / 当前在线 / 来信数 / 数据行 / 云端占用 / 覆盖地区六联 KPI、近 14 天注册·登录·发言趋势、地区 Top10、最近读者（邮箱脱敏）
 - **离线可用**：PWA + Service Worker，记账这件事不需要网络
 
-> 🌐 **在线体验**：[mindofqc.github.io/inkledger/#demo](https://mindofqc.github.io/inkledger/#demo)（`#demo` 会自动载入示例数据；深链 `#stats` / `#settings` / `#add` / `#light` / `#dark` 可直达对应视图或主题）
+> 🌐 **在线体验**：[mindofqc.github.io/inkledger/#demo](https://mindofqc.github.io/inkledger/#demo)（`#demo` 会自动载入示例数据；深链 `#dashboard` / `#home` / `#stats` / `#chat` / `#profile` / `#settings` / `#add` / `#admin`（管理员）/ `#light` / `#dark` 可直达对应视图或主题）
 >
 > 另有 Qoder Sites 私有部署：`inkledger-j8vzdjdlheu.qoder.website`（需 Qoder 账号登录访问）
 
@@ -49,10 +53,14 @@
 - 🔎 **流水工作台**：四种实时排序（日期 / 金额升降）、批量勾选删除、**保存视图**（把常用筛选 + 排序收藏成快捷方式，跨月复用）
 - 📥 **账单导入**：微信支付、支付宝官方导出的 CSV 一键导入；自动建户（按银行卡尾号识别同一账户）、关键词自动归类、交易单号去重、退款标记
 - 📊 **统计分析**：分类占比环图、近六个月收支趋势、消费来源分布、分类排行与日均支出
-- ☁️ **GitHub 同步**：Fine-grained PAT 授权，自动创建私有数据仓库，多端按 `updatedAt` 合并
+- 📋 **数据看板**：打开账本第一眼——本月收支结余、净资产、预算执行、分类 Top5、账户余额、近 7 天待还与最近流水
+- ☁️ **云端同步**：Cloudflare Workers + D1 后端，邮箱 + 密码 + 验证码登录，多端按 `updatedAt` 合并、乐观锁防冲突；GitHub 私有仓库同步保留为备用导出
 - 🎨 **双主题**：日刊（默认）/ 夜班——日刊是米白旧报纸底纹 + 浅棕文字 + 橘黄墨绿点缀，夜班是暖棕台灯暗色；全站手绘多彩图标，左上角品牌标识与报头、侧栏、空态、便签、记账单、设置页统一为同一只手绘记账助手猫「墨墨」的多姿势形象
 - 📱 **PWA**：可安装到手机桌面，Service Worker 离线访问
-- 🔒 **隐私**：无统计、无追踪、无后端；Token 仅存于浏览器 localStorage
+- 👤 **读者档案**：昵称（≤24 字）/ 头像 / 个性签名（≤200 字节）三选一头像方案——上传照片本地压到 96×96、内置墨墨贴纸、emoji；报头右上角常驻读者证，一键进档案
+- 💬 **读者对话室**：全站共用聊天室，15 秒增量轮询、本人发言靠右贴纸色、快捷表情、2 秒发言冷却与 500 字计数；**管理员金箔高亮 + 「主编」印章**
+- 🛡️ **平台看板**：仅管理员可见——六联 KPI、近 14 天注册/登录/发言三线趋势（可点图例切换）、地区 Top10、最近读者表（搜索 / 排序 / 邮箱脱敏），60 秒自动刷新
+- 🔒 **隐私**：无统计、无追踪；密码 PBKDF2 加盐哈希，GitHub Token 仅存于浏览器 localStorage、不上云；平台看板只回聚合数据与脱敏邮箱，不含任何账本内容
 
 ## 🚀 快速开始
 
@@ -111,6 +119,30 @@ Token 与数据都不会离开你的浏览器到任何第三方服务器（仅 G
 欢迎 Issue 与 PR。提交前请跑 `pnpm test && pnpm build`。
 
 ## 📝 更新日志
+
+### v1.12.0（2026-11-12）
+
+- **feat**：**读者档案**（`#profile`）——改昵称 / 头像 / 个性签名。头像三选一：上传照片（本地 canvas 裁方 + 压到 96×96 WebP，不支持时退回 PNG）、5 张内置墨墨贴纸（主编 / 招呼 / 读报 / 打盹 / 存钱）、12 个 emoji；昵称 ≤24 字、签名 ≤200 UTF-8 字节，实时字数与字节计数；新增 `Avatar` 组件统一渲染图片 / 贴纸 / emoji / 首字母四类头像，报头右上角常驻「读者证」，设置页账号卡改用真实头像并提供「编辑资料」入口
+- **feat**：**读者对话室**（`#chat`）——全站读者共用一间聊天室，消息落 D1 `ml_chat_messages`；15 秒增量轮询、本人发言靠右贴纸色、快捷表情条、字数计数与 2 秒发言冷却倒计时、在线人数、新消息回到底部
+- **feat**：**管理员身份与高亮**——`235173498@qq.com` 设为主编（`wrangler.toml` 的 `ADMIN_EMAIL` 支持逗号分隔多邮箱，也可 `UPDATE ml_users SET is_admin=1`）；对话室内管理员气泡金箔描边 + 头像金环 + 「主编」印章，报头读者证同步挂主编徽标
+- **feat**：**平台看板**（`#admin`，仅管理员）——注册读者 / 当前在线 / 对话室来信 / 账目数据行 / 云端占用 / 覆盖地区六联 KPI，近 14 天注册·登录·发言三色趋势（图例可切换、hover 十字线读数），地区 Top10 条形，最近读者表（搜索 / 按注册或最近登录排序 / 邮箱脱敏），60 秒自动刷新可关；非管理员访问返回 `403 forbidden`，前端隐藏入口并在身份撤销时自动退出
+- **feat**：后端新增 `GET|PUT /api/user/profile`、`POST /api/presence`（60 秒心跳，5 分钟窗口判在线）、`GET|POST /api/chat`、`GET /api/admin/stats`；`ml_users` 加 `avatar/bio/is_admin`，`ml_sessions` 加 `location`，新建 `ml_login_logs` / `ml_chat_messages`（迁移 `0002_profile_chat_admin.sql`，首次请求自动执行）
+- **fix**：CORS 白名单补上 GitHub Pages 公开体验站 `https://mindofqc.github.io`（只放行该账号名，不用通配 `*.github.io`），此前线上前端调云端 API 会被浏览器拦下
+- **style**：新增 13 枚手绘贴纸图标 `chat / user / users / shield / crown / pin / camera / smile / pulse / clock / globe / send / image`（图标总数 73），侧栏与底部导航加入「对话室」，管理员额外显示「平台看板」（带皇冠角标）
+- PWA 缓存版本升至 `meowledger-v1.12.0`；本地账本数据格式与同步行为零变化，未登录仍可纯本地使用
+
+### v1.11.1（2026-11-12）
+
+- **feat**：**新用户使用指引**——首次登录自动播放 6 步 spotlight 高亮指引（看板 KPI / 记一笔 / 预算待办 / 账目 / 统计 / 设置），报纸风介绍卡 + 进度点，支持上一步 / 跳过 / 键盘方向键；按账号记忆不再重复打扰，设置页「使用指引」可随时重看
+- **style**：界面不再强调云端概念——同步全程自动无感，登录页 / 设置页 / 启动页文案回归记账本身（设置页「云端账号 · 多端同步」改为「账号」）
+- PWA 缓存版本升至 `meowledger-v1.11.1`；数据与同步行为零变化
+
+### v1.11.0（2026-11-12）
+
+- **feat**：**云端账本**——新增 Cloudflare Workers + D1 后端（`cloudflare/api/`，与热点雷达同架构）：QQ 邮箱 SMTP 验证码注册 / 登录 / 找回密码，PBKDF2 加盐哈希 + 90 天会话；账本数据按用户存 D1，多端按 `updatedAt` 合并、乐观锁防冲突，离线记账联网自动补同步；GitHub 同步保留为备用导出（PAT 不上云）
+- **feat**：**数据看板**成为默认首页——本月收支结余 / 净资产四联 KPI、预算执行进度、近 6 个月趋势、分类 Top5、账户余额、近 7 天待还、最近流水
+- **feat**：登录门「读者登记处」整页（登录 / 注册 / 忘记密码三 tab）、设置页「云端账号」卡片（同步状态 / 立即同步 / 退出登录 / API 线路切换：自定义域名默认 + workers.dev 备用）
+- PWA 缓存版本升至 `meowledger-v1.11.0`；本地数据格式零迁移，未登录仍可纯本地使用
 
 ### v1.10.1（2026-11-11）
 

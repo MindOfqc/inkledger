@@ -1,6 +1,7 @@
 # 喵账本 MeowLedger 部署指南
 
-喵账本是**纯静态应用**：`pnpm build` 产物在 `dist/`，放到任何静态托管即可运行，无需服务器、无需环境变量。
+喵账本前端是**纯静态应用**：`pnpm build` 产物在 `dist/`，放到任何静态托管即可运行。
+云端账本（登录 / 多端同步）由独立的 Cloudflare Worker + D1 提供，部署步骤见 [cloudflare/api/DEPLOY.md](./cloudflare/api/DEPLOY.md)；不部署后端也能纯本地使用。
 
 > 先构建：
 > ```bash

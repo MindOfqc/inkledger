@@ -1,11 +1,13 @@
 /**
- * 全局状态：本地优先（localStorage），可同步到 GitHub 私有仓库
+ * 全局状态：本地优先（localStorage），云端账号多端同步（Cloudflare Worker + D1），
+ * GitHub 私有仓库保留为备用导出通道
  */
 import { reactive, watch } from 'vue'
 import { uid, toLocalISO, monthKey, nowDateKey, addDays, addMonths, advanceCycle, CYCLES } from './lib/format.js'
 import { monthDistance } from './lib/budget.js'
 import { importBill, importRows } from './lib/importer.js'
 import { getUser, ensureRepo, readData, writeData } from './lib/github.js'
+import { getToken, clearToken, getCachedUser, setCachedUser, fetchData, putData, logout as apiLogout, fetchMe, saveProfile as apiSaveProfile, pingPresence, ApiError } from './lib/api.js'
 
 const KEY = 'inkledger:v1'
 
@@ -82,7 +84,22 @@ function defaultState() {
       theme: 'light',
       github: { token: '', login: '', repo: '' },
       lastSync: null
-    }
+    },
+    sync: { status: 'idle', lastSync: null, version: 0, email: '', error: '' }
+  }
+}
+
+/** 云同步元信息归一化：上次会话中断的「同步中」不残留；绝不携带 token */
+function normalizeSync(s) {
+  const base = { status: 'idle', lastSync: null, version: 0, email: '', error: '' }
+  if (!s || typeof s !== 'object') return base
+  const status = ['idle', 'syncing', 'ok', 'error', 'offline'].includes(s.status) ? s.status : 'idle'
+  return {
+    status: status === 'syncing' ? 'idle' : status,
+    lastSync: typeof s.lastSync === 'string' ? s.lastSync : null,
+    version: Number.isFinite(s.version) && s.version >= 0 ? Math.floor(s.version) : 0,
+    email: typeof s.email === 'string' ? s.email : '',
+    error: typeof s.error === 'string' ? s.error : ''
   }
 }
 
@@ -100,7 +117,8 @@ function load() {
       recurring: Array.isArray(saved.recurring) ? saved.recurring : [],
       goals: Array.isArray(saved.goals) ? saved.goals : [],
       rules: Array.isArray(saved.rules) ? saved.rules : [],
-      settings: { ...base.settings, ...saved.settings, github: { ...base.settings.github, ...saved.settings?.github } }
+      settings: { ...base.settings, ...saved.settings, github: { ...base.settings.github, ...saved.settings?.github } },
+      sync: normalizeSync(saved.sync)
     }
   } catch {
     return defaultState()
@@ -108,6 +126,29 @@ function load() {
 }
 
 export const store = reactive({ ...load() })
+
+/* —— 云端用户资料（响应式）：头像 / 昵称 / 签名 / 管理员标记，供资料页、对话室、看板共用 —— */
+export const cloudUser = reactive({
+  id: '', email: '', nickname: '', avatar: '', bio: '', isAdmin: false, lastLogin: null, loaded: false
+})
+export function setCloudUser(u) {
+  if (!u) {
+    cloudUser.id = ''; cloudUser.email = ''; cloudUser.nickname = ''
+    cloudUser.avatar = ''; cloudUser.bio = ''; cloudUser.isAdmin = false
+    cloudUser.lastLogin = null; cloudUser.loaded = false
+    return
+  }
+  cloudUser.id = u.id || ''
+  cloudUser.email = u.email || ''
+  cloudUser.nickname = u.nickname || ''
+  cloudUser.avatar = u.avatar || ''
+  cloudUser.bio = u.bio || ''
+  cloudUser.isAdmin = !!u.isAdmin
+  if (u.lastLogin !== undefined) cloudUser.lastLogin = u.lastLogin || null
+  cloudUser.loaded = true
+}
+// 启动时先用本地缓存回填，避免资料页 / 对话室首屏空白
+setCloudUser(getCachedUser())
 
 export function persist() {
   localStorage.setItem(KEY, JSON.stringify({
@@ -118,10 +159,14 @@ export function persist() {
     recurring: store.recurring,
     goals: store.goals,
     rules: store.rules,
-    settings: store.settings
+    settings: store.settings,
+    sync: store.sync
   }))
 }
-watch(store, persist, { deep: true })
+watch(store, () => {
+  persist()
+  scheduleAutoPush()
+}, { deep: true })
 
 /* —— 轻提示：可携带一个动作按钮（如「撤销」） —— */
 export const toast = reactive({ msg: '', ts: 0, action: null, actionLabel: '' })
@@ -642,7 +687,241 @@ export function mergeCloud(local, cloud) {
   }
 }
 
-/* —— GitHub 同步 —— */
+/* —— 云端同步（Cloudflare Worker + D1）：本地优先，云端做多端中继 —— */
+
+/** 业务数据指纹：只有数据真正变化才调度自动推送，sync 元信息写入不会引发推送循环 */
+function dataSignature() {
+  return JSON.stringify([store.txs, store.accounts, store.categories, store.budgets, store.recurring, store.goals, store.rules])
+}
+let lastDataSig = dataSignature()
+let suppressDepth = 0   // >0 时（启动同步 / 应用远端数据）暂停自动推送
+let pushTimer = null    // 自动推送防抖定时器（约 2s）
+let syncBusy = false    // 启动 / 手动 / 自动同步互斥，避免并发 PUT
+
+function hasToken() {
+  try { return !!getToken() } catch { return false }
+}
+
+/** 错误归类：offline（网络不通）/ unauthorized（401）/ error（其它） */
+function classifyError(e) {
+  if (e instanceof ApiError) {
+    if (e.status === 0 || e.code === 'network') return 'offline'
+    if (e.status === 401) return 'unauthorized'
+    return 'error'
+  }
+  if (e instanceof TypeError) return 'offline' // fetch 原生网络异常兜底
+  if (e?.status === 0 || e?.code === 'network') return 'offline'
+  if (e?.status === 401) return 'unauthorized'
+  return 'error'
+}
+const isConflict = (e) => e?.status === 409 || e?.code === 'version_conflict'
+
+/** 失败时统一落 sync 状态，返回归类结果 */
+function failSync(e) {
+  const kind = classifyError(e)
+  if (kind === 'offline') {
+    store.sync.status = 'offline'
+    store.sync.error = '网络已断开，改动已保存在本机'
+  } else if (kind === 'unauthorized') {
+    store.sync.status = 'error'
+    store.sync.error = '登录已过期，请重新登录'
+  } else {
+    store.sync.status = 'error'
+    store.sync.error = e?.message || '同步失败，请稍后重试'
+  }
+  return kind
+}
+
+/** 云端载荷：与 exportJSON 同构；GitHub PAT 仅留在本机，绝不进入云端数据库 */
+function cloudPayload() {
+  const payload = JSON.parse(exportJSON())
+  // 防御性剥离：即便未来导出结构带上 settings，token 也不上云
+  if (payload.settings?.github?.token) payload.settings.github.token = ''
+  return payload
+}
+
+function localSnapshot() {
+  return {
+    txs: store.txs, accounts: store.accounts, categories: store.categories,
+    budgets: store.budgets, recurring: store.recurring, goals: store.goals, rules: store.rules
+  }
+}
+
+/** 应用合并结果：与 importJSON 相同的赋值方式，但静默、不登记撤销；
+ *  只写业务数组，settings（含本机 GitHub Token）永不被云端覆盖 */
+function applyRemote(data) {
+  suppressDepth++
+  try {
+    store.txs = Array.isArray(data.txs) ? data.txs : []
+    store.accounts = Array.isArray(data.accounts) ? data.accounts : []
+    store.categories = data.categories?.length ? data.categories : defaultState().categories
+    store.budgets = Array.isArray(data.budgets) ? data.budgets : []
+    store.recurring = Array.isArray(data.recurring) ? data.recurring : []
+    store.goals = Array.isArray(data.goals) ? data.goals : []
+    store.rules = Array.isArray(data.rules) ? data.rules : []
+    persist()
+    lastDataSig = dataSignature()
+  } finally {
+    suppressDepth--
+  }
+}
+
+/** 乐观锁推送：409 冲突则 拉取→合并→应用→落盘 后重试，最多 3 次 */
+async function pushWithRetry(baseVersion) {
+  let base = Number(baseVersion) || 0
+  store.sync.status = 'syncing'
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const resp = await putData(cloudPayload(), base)
+      store.sync.version = Number(resp?.version) || base + 1
+      store.sync.status = 'ok'
+      store.sync.lastSync = new Date().toISOString()
+      store.sync.error = ''
+      lastDataSig = dataSignature()
+      return 'ok'
+    } catch (e) {
+      if (isConflict(e)) {
+        try {
+          const remote = await fetchData()
+          base = Number(remote?.version) || 0
+          if (remote?.data) applyRemote(mergeCloud(localSnapshot(), remote.data))
+          store.sync.version = base
+          continue
+        } catch (e2) {
+          return failSync(e2)
+        }
+      }
+      return failSync(e)
+    }
+  }
+  store.sync.status = 'error'
+  store.sync.error = '同步冲突，请稍后重试'
+  return 'error'
+}
+
+/** 自动推送入口（防抖定时器调用） */
+async function pushCloud() {
+  if (!hasToken() || syncBusy || suppressDepth > 0) return false
+  syncBusy = true
+  try {
+    store.sync.error = ''
+    return (await pushWithRetry(store.sync.version)) === 'ok'
+  } finally {
+    syncBusy = false
+  }
+}
+
+/** 数据变化后调度一次防抖自动推送；未登录 / 抑制中 / 离线时不调度 */
+function scheduleAutoPush() {
+  if (suppressDepth > 0 || !hasToken() || store.sync.status === 'offline') return
+  const sig = dataSignature()
+  if (sig === lastDataSig) return
+  lastDataSig = sig
+  clearTimeout(pushTimer)
+  pushTimer = setTimeout(() => { pushTimer = null; pushCloud() }, 2000)
+}
+
+/** 启动同步：登录校验 → 拉取 → 合并应用 → 推送。App.vue 启动时调用一次 */
+export async function bootCloud() {
+  if (!hasToken()) return { status: 'unauthorized' }
+  syncBusy = true
+  suppressDepth++
+  try {
+    store.sync.status = 'syncing'
+    store.sync.error = ''
+    const me = await fetchMe()
+    const user = me?.user || getCachedUser() || {}
+    store.sync.email = user.email || ''
+    setCloudUser(user)
+    startPresence()
+    const remote = await fetchData()
+    const base = Number(remote?.version) || 0
+    if (remote?.data) {
+      applyRemote(mergeCloud(localSnapshot(), remote.data))
+    }
+    const r = await pushWithRetry(base)
+    if (r === 'ok') return { status: 'ok' }
+    if (r === 'unauthorized') return { status: 'unauthorized' }
+    return { status: 'offline' }
+  } catch (e) {
+    const kind = failSync(e)
+    return { status: kind === 'unauthorized' ? 'unauthorized' : 'offline' }
+  } finally {
+    suppressDepth--
+    syncBusy = false
+    scheduleAutoPush()
+  }
+}
+
+/** 手动同步：拉取→合并→应用→落盘→推送；未登录或同步进行中返回 false */
+export async function syncNow() {
+  if (!hasToken() || syncBusy) return false
+  syncBusy = true
+  suppressDepth++
+  clearTimeout(pushTimer)
+  pushTimer = null
+  try {
+    store.sync.status = 'syncing'
+    store.sync.error = ''
+    const remote = await fetchData()
+    const base = Number(remote?.version) || 0
+    if (remote?.data) applyRemote(mergeCloud(localSnapshot(), remote.data))
+    return (await pushWithRetry(base)) === 'ok'
+  } catch (e) {
+    failSync(e)
+    return false
+  } finally {
+    suppressDepth--
+    syncBusy = false
+    scheduleAutoPush()
+  }
+}
+
+/** 退出云端账号：清登录态与 sync 元信息，本机账目完整保留（离线缓存） */
+export async function logoutCloud() {
+  clearTimeout(pushTimer)
+  pushTimer = null
+  try { await apiLogout() } catch { /* 服务端失败也要退出 */ }
+  try { clearToken() } catch { /* ignore */ }
+  stopPresence()
+  setCloudUser(null)
+  store.sync = { status: 'idle', lastSync: null, version: 0, email: '', error: '' }
+  lastDataSig = dataSignature()
+}
+
+/** 保存个人资料：成功后同步响应式 cloudUser 与本地缓存 */
+export async function saveProfile(patch) {
+  const res = await apiSaveProfile(patch)
+  if (res?.user) {
+    setCloudUser({ ...res.user, lastLogin: cloudUser.lastLogin })
+    setCachedUser(res.user)
+  }
+  return res
+}
+
+/* —— 在线心跳：每 60 秒上报一次，刷新会话最近在线时间与登录地点 —— */
+let presenceTimer = null
+export function startPresence() {
+  if (typeof window === 'undefined' || presenceTimer) return
+  const beat = () => { if (hasToken()) pingPresence().catch(() => {}) }
+  beat()
+  presenceTimer = setInterval(beat, 60_000)
+}
+export function stopPresence() {
+  if (presenceTimer) { clearInterval(presenceTimer); presenceTimer = null }
+}
+
+/* 恢复联网时自动补一次全量同步（Node / 测试环境无 window，跳过） */
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('online', () => {
+    if (!hasToken()) return
+    // 若恰有同步在途，稍后重试，避免恢复联网后的第一次同步被互斥挡掉
+    if (syncBusy) setTimeout(() => { if (hasToken() && !syncBusy) syncNow() }, 1500)
+    else syncNow()
+  })
+}
+
+/* —— GitHub 同步（备用导出通道） —— */
 export function defaultRepoName(login) {
   return `${login}-inkledger-data`
 }

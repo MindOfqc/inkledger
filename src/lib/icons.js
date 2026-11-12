@@ -425,6 +425,88 @@ export const ICONS = {
   "select": [
     el('rect', { x: 4, y: 4, width: 16, height: 16, rx: 4, fill: W }),
     el('path', { d: 'm8 12.2 2.8 2.8L16.4 9', fill: 'none', stroke: G, 'stroke-width': 2 })
+  ],
+
+  /* —— 对话室 / 读者档案 / 平台看板 —— */
+  // 对话室：两张交叠的对话气泡 + 省略号
+  "chat": [
+    el('path', { d: 'M3.2 6.4c4-.6 8-.6 11.8-.1.4 3 .4 5.8 0 8.6-3 .4-6 .5-8.9.3l-3 2.4.5-2.7c-.3-2.8-.4-5.6-.4-8.5Z', fill: W }),
+    el('path', { d: 'M9.4 4.2c3.6-.5 7.2-.4 10.8.1.4 2.8.4 5.4 0 8-1 .2-2 .3-3 .3l.4 2.4-2.6-2.1', fill: O }),
+    line('M6 9.4h.01M9 9.4h.01M12 9.4h.01', { 'stroke-width': 2 })
+  ],
+  // 读者：单人头像牌
+  "user": [
+    el('circle', { cx: 12, cy: 8.4, r: 4.1, fill: W }),
+    el('path', { d: 'M4.6 20.4c.6-4 3.6-6 7.4-6s6.8 2 7.4 6c-5 .7-9.8.7-14.8 0Z', fill: GL }),
+    line('M10.4 8c.3.3.7.3 1 0M12.8 8c.3.3.7.3 1 0', { 'stroke-width': 1.2 })
+  ],
+  // 平台用户：双人叠影
+  "users": [
+    el('circle', { cx: 9.2, cy: 8.6, r: 3.6, fill: W }),
+    el('path', { d: 'M2.8 20.2c.5-3.6 3.1-5.4 6.4-5.4s5.9 1.8 6.4 5.4c-4.3.6-8.5.6-12.8 0Z', fill: B }),
+    el('circle', { cx: 16.6, cy: 7.4, r: 2.9, fill: Y }),
+    el('path', { d: 'M15.4 14.6c3 .1 5.2 1.8 5.7 5-1.7.3-3.4.4-5.1.4', fill: O })
+  ],
+  // 管理员盾牌：盾形 + 对勾
+  "shield": [
+    el('path', { d: 'M12 3.2c2.6 1.1 5.2 1.7 7.8 1.8.3 6.6-2.3 11.4-7.8 15.8C6.5 16.4 3.9 11.6 4.2 5c2.6-.1 5.2-.7 7.8-1.8Z', fill: G }),
+    el('path', { d: 'm8.4 11.8 2.6 2.6 4.8-5', fill: 'none', stroke: W, 'stroke-width': 2 })
+  ],
+  // 主编王冠：三尖冠 + 宝石
+  "crown": [
+    el('path', { d: 'M3.4 8.2 6.6 12l2.6-4.6L12 3.6l2.8 3.8L17.4 12l3.2-3.8-1.4 10.2c-4.8.6-9.6.6-14.4 0Z', fill: Y }),
+    el('path', { d: 'M4.6 16.4c4.9.6 9.9.6 14.8 0l-.2 2c-4.8.6-9.6.6-14.4 0Z', fill: OD }),
+    el('circle', { cx: 12, cy: 12.4, r: 1.2, fill: R, 'stroke-width': 1.1 }),
+    el('circle', { cx: 7.6, cy: 13.4, r: .85, fill: B, 'stroke-width': 1 }),
+    el('circle', { cx: 16.4, cy: 13.4, r: .85, fill: B, 'stroke-width': 1 })
+  ],
+  // 地点图钉
+  "pin": [
+    el('path', { d: 'M12 21c4-4.6 6-8 6-10.6A6 6 0 0 0 6 10.4C6 13 8 16.4 12 21Z', fill: R }),
+    el('circle', { cx: 12, cy: 10.2, r: 2.3, fill: W })
+  ],
+  // 相机：上传头像
+  "camera": [
+    el('path', { d: 'M3.4 8.6c1.6-.3 3.2-.4 4.8-.5l1.2-2.2c1.8-.2 3.6-.2 5.4 0l1.2 2.2c1.5.1 3 .2 4.6.5.4 3.6.4 7 0 10.4-5.8.6-11.4.6-17.2 0-.4-3.4-.4-6.8 0-10.4Z', fill: T }),
+    el('circle', { cx: 12, cy: 13.6, r: 3.8, fill: W }),
+    el('circle', { cx: 12, cy: 13.6, r: 1.9, fill: B, 'stroke-width': 1.2 }),
+    el('circle', { cx: 18.4, cy: 10.6, r: .8, fill: Y, 'stroke-width': 1 })
+  ],
+  // 表情笑脸
+  "smile": [
+    el('circle', { cx: 12, cy: 12, r: 8.6, fill: Y }),
+    line('M8.6 9.6c.4-.5 1-.5 1.4 0M14 9.6c.4-.5 1-.5 1.4 0', { 'stroke-width': 1.4 }),
+    line('M8 14c1.2 2 2.6 3 4 3s2.8-1 4-3', { 'stroke-width': 1.6 })
+  ],
+  // 心跳折线：在线 / 活跃
+  "pulse": [
+    el('rect', { x: 3, y: 5, width: 18, height: 14, rx: 3.4, fill: W }),
+    line('M5.4 12.6h2.8l1.6-4 2.4 8 2-4h4.4', { stroke: R, 'stroke-width': 1.8 })
+  ],
+  // 时钟
+  "clock": [
+    el('circle', { cx: 12, cy: 12, r: 8.6, fill: W }),
+    el('circle', { cx: 12, cy: 12, r: 6.2, fill: 'none', 'stroke-width': 1, stroke: T }),
+    line('M12 7.6V12l3.2 2', { 'stroke-width': 1.7 }),
+    el('circle', { cx: 12, cy: 12, r: .9, fill: OD, 'stroke-width': 1 })
+  ],
+  // 地球：地区分布
+  "globe": [
+    el('circle', { cx: 12, cy: 12, r: 8.6, fill: B }),
+    line('M3.6 12c5.6.5 11.2.5 16.8 0', { stroke: W, 'stroke-width': 1.3 }),
+    line('M12 3.4c2.6 2.4 3.9 5.3 3.9 8.6s-1.3 6.2-3.9 8.6c-2.6-2.4-3.9-5.3-3.9-8.6S9.4 5.8 12 3.4Z', { stroke: W, 'stroke-width': 1.3 })
+  ],
+  // 纸飞机：发送
+  "send": [
+    el('path', { d: 'M3.4 11.6 20.6 4l-6 16.4-3.4-6.2Z', fill: O }),
+    el('path', { d: 'M11.2 14.2 20.6 4l-9.4 10.2.2 4.6Z', fill: Y }),
+    line('M11.2 14.2 3.4 11.6', { 'stroke-width': 1.3 })
+  ],
+  // 照片：内置贴纸 / 相册
+  "image": [
+    el('rect', { x: 3.2, y: 5, width: 17.6, height: 14, rx: 2.6, fill: W }),
+    el('circle', { cx: 8.4, cy: 9.6, r: 1.7, fill: Y }),
+    el('path', { d: 'M3.6 16.4 9 11.4l3.6 3.4 3-2.6 4.8 4.2v1.6c-5.6.6-11.2.6-16.8 0Z', fill: GL })
   ]
 }
 

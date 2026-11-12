@@ -4,9 +4,10 @@ import {
   store, showToast, showUndoToast, askConfirm, upsertAccount, removeAccount, upsertCategory, removeCategory, setBudget, budgetOf, toggleCarryover,
   upsertRecurring, removeRecurring, upsertGoal, removeGoal, upsertRule, removeRule, toggleRule,
   importFromText, importFromRows, exportJSON, importJSON, clearAll, loadSample, balanceOf,
-  syncToGitHub, defaultRepoName
+  syncToGitHub, defaultRepoName, syncNow, logoutCloud, cloudUser as cloudProfile
 } from '../store.js'
 import { getUser } from '../lib/github.js'
+import { getToken, getCachedUser, apiBase, setApiBase, BACKUP_BASE } from '../lib/api.js'
 import { isXlsx, parseXlsxRows } from '../lib/xlsx.js'
 import { fmtMoney, CYCLES, dueLabel, daysFromToday, nowDateKey, ACCOUNT_META } from '../lib/format.js'
 import { decodeBuffer, buildTxCsv } from '../lib/csv.js'
@@ -14,6 +15,9 @@ import { CATEGORY_ICON_KEYS } from '../lib/icons.js'
 import AppIcon from './AppIcon.vue'
 import DataIcon from './DataIcon.vue'
 import CatArt from './CatArt.vue'
+import Avatar from './Avatar.vue'
+
+const emit = defineEmits(['navigate'])
 
 /* —— 主题 —— */
 function setTheme(t) {
@@ -44,7 +48,88 @@ async function onBillFile(e) {
   }
 }
 
-/* —— GitHub 同步 —— */
+/* —— 云端账号 —— */
+const cloudSyncing = ref(false)
+const cloudUser = computed(() => {
+  const fallbackEmail = store.sync.email // 依赖 sync 元信息：退出登录 / 同步完成后卡片随之刷新
+  if (!getToken()) return null
+  const u = getCachedUser()
+  // 云端资料（store 里的响应式 cloudUser）优先，未加载时退回本地缓存，保证离线也能显示头像
+  const live = cloudProfile?.loaded ? cloudProfile : null
+  return {
+    email: live?.email || u?.email || fallbackEmail || '',
+    nickname: live?.nickname || u?.nickname || '',
+    avatar: live?.avatar || u?.avatar || '',
+    bio: live?.bio || u?.bio || '',
+    isAdmin: !!(live ? live.isAdmin : u?.isAdmin)
+  }
+})
+const CLOUD_STATUS_LABELS = { ok: '已同步', syncing: '同步中', offline: '离线', error: '同步失败', idle: '待同步' }
+const cloudStatusLabel = computed(() => CLOUD_STATUS_LABELS[store.sync.status] || '待同步')
+const cloudLastSyncLabel = computed(() => store.sync.lastSync
+  ? new Date(store.sync.lastSync).toLocaleString('zh-CN')
+  : '还未同步过')
+const cloudBusy = computed(() => cloudSyncing.value || store.sync.status === 'syncing')
+
+async function doCloudSync() {
+  if (cloudBusy.value) return
+  cloudSyncing.value = true
+  try {
+    const ok = await syncNow()
+    if (ok) showToast('已同步')
+    else if (store.sync.status === 'offline') showToast('当前离线，改动已保存在本机，联网后会自动同步')
+    else showToast(store.sync.error || '同步失败，请稍后重试')
+  } finally { cloudSyncing.value = false }
+}
+
+function startGuide() {
+  window.dispatchEvent(new Event('meowledger:start-guide'))
+}
+
+async function doCloudLogout() {
+  const ok = await askConfirm({
+    title: '退出登录？',
+    message: '本机账目会完整保留，随时重新登录即可继续使用。',
+    confirmLabel: '退出登录', danger: true
+  })
+  if (!ok) return
+  await logoutCloud()
+  showToast('已退出登录，本机数据已保留')
+}
+
+/* —— API 线路 —— */
+const BASE_OVERRIDE_KEY = 'meowledger:api-base' // 与 lib/api.js 的覆盖键一致
+function readBaseOverride() {
+  try { return localStorage.getItem(BASE_OVERRIDE_KEY) || '' } catch { return '' }
+}
+const routeChoice = ref(readBaseOverride() === BACKUP_BASE ? 'backup' : (readBaseOverride() ? 'custom' : 'default'))
+const customBase = ref(readBaseOverride())
+const currentBase = ref(apiBase())
+
+function onRouteChange() {
+  if (routeChoice.value === 'default') {
+    setApiBase(null)
+    customBase.value = ''
+    currentBase.value = apiBase()
+    showToast('已恢复默认线路，刷新页面后生效')
+  } else if (routeChoice.value === 'backup') {
+    setApiBase(BACKUP_BASE)
+    customBase.value = BACKUP_BASE
+    currentBase.value = apiBase()
+    showToast('已切换到备用线路，刷新页面后生效')
+  } else if (!customBase.value) {
+    customBase.value = currentBase.value
+  }
+}
+function saveCustomBase() {
+  const v = customBase.value.trim()
+  if (!/^https?:\/\/.+/i.test(v)) { showToast('请填写以 http:// 或 https:// 开头的线路地址'); return }
+  setApiBase(v)
+  currentBase.value = apiBase()
+  showToast('线路已保存，刷新页面后生效')
+}
+
+/* —— GitHub 同步（备用导出） —— */
 const tokenInput = ref(store.settings.github.token)
 const verifying = ref(false)
 const syncing = ref(false)
@@ -232,7 +317,7 @@ async function onBackupFile(e) {
 async function doClear() {
   const ok = await askConfirm({
     title: '清空全部账目？',
-    message: '账户与分类会恢复默认，不影响已同步到 GitHub 的数据。清空后可在提示里点「撤销」找回。',
+    message: '账户与分类会恢复默认，清空后可在提示里点「撤销」找回。',
     confirmLabel: '清空', danger: true
   })
   if (ok) clearAll()
@@ -279,6 +364,60 @@ async function delRecurring() {
     <CatArt variant="wave" :size="84" class="head__cat" />
   </header>
 
+  <!-- 账号 -->
+  <div class="sec-title sec-title--ico"><AppIcon name="cat" :size="16" />账号</div>
+  <section class="card">
+    <template v-if="cloudUser">
+      <div class="row-line">
+        <span class="row-line__icon row-line__icon--avatar">
+          <Avatar :src="cloudUser.avatar" :name="cloudUser.nickname || cloudUser.email" :size="40" :admin="cloudUser.isAdmin" />
+        </span>
+        <span class="row-line__body">
+          <b class="account-name">
+            {{ cloudUser.nickname || cloudUser.email || '账号' }}
+            <span v-if="cloudUser.isAdmin" class="badge-admin"><AppIcon name="crown" :size="11" />主编</span>
+          </b>
+          <small v-if="cloudUser.nickname && cloudUser.email">{{ cloudUser.email }}</small>
+          <small v-if="cloudUser.bio" class="account-bio">{{ cloudUser.bio }}</small>
+        </span>
+      </div>
+      <div class="row row--end">
+        <span class="status">{{ cloudStatusLabel }} · 上次同步：{{ cloudLastSyncLabel }}</span>
+      </div>
+      <div class="row">
+        <button class="btn btn--gold btn--ico" :disabled="cloudBusy" @click="doCloudSync">
+          <AppIcon name="sync" :size="15" />{{ cloudBusy ? '同步中…' : '立即同步' }}
+        </button>
+        <button class="btn btn--ghost btn--ico" @click="emit('navigate', 'profile')">
+          <AppIcon name="user" :size="15" />编辑资料
+        </button>
+        <button class="btn btn--ghost btn--ico" @click="emit('navigate', 'chat')">
+          <AppIcon name="chat" :size="15" />对话室
+        </button>
+        <button v-if="cloudUser.isAdmin" class="btn btn--ghost btn--ico" @click="emit('navigate', 'admin')">
+          <AppIcon name="shield" :size="15" />平台看板
+        </button>
+        <button class="btn btn--ghost" @click="startGuide">使用指引</button>
+        <button class="btn btn--ghost" @click="doCloudLogout">退出登录</button>
+      </div>
+    </template>
+    <p v-else class="hint">账号信息加载中…</p>
+
+    <div class="field cloud-route">
+      <span class="field__label">API 线路</span>
+      <select v-model="routeChoice" class="select" @change="onRouteChange">
+        <option value="default">默认线路</option>
+        <option value="backup">备用线路（workers.dev）</option>
+        <option value="custom">自定义线路</option>
+      </select>
+    </div>
+    <div v-if="routeChoice === 'custom'" class="row cloud-route__custom">
+      <input v-model="customBase" class="input" placeholder="https://your-api.example.com" @keydown.enter.prevent="saveCustomBase" />
+      <button class="btn" @click="saveCustomBase">保存</button>
+    </div>
+    <p class="hint cloud-route__note">当前线路：{{ currentBase }} · 切换后刷新页面生效。</p>
+  </section>
+
   <!-- 账单导入 -->
   <div class="sec-title sec-title--ico"><AppIcon name="mail" :size="16" />账单导入 · 微信 / 支付宝</div>
   <section class="card">
@@ -292,11 +431,11 @@ async function delRecurring() {
     </label>
   </section>
 
-  <!-- GitHub 同步 -->
-  <div class="sec-title sec-title--ico"><AppIcon name="github" :size="16" />GitHub 同步 · 私有数据仓库</div>
+  <!-- GitHub 同步（备用导出） -->
+  <div class="sec-title sec-title--ico"><AppIcon name="github" :size="16" />GitHub 同步 · 备用导出</div>
   <section class="card">
     <p class="hint">
-      账本数据以一个 JSON 文件存放在<strong>你自己的私有仓库</strong>中，本站不保存任何数据。
+      GitHub 同步是<strong>备用导出通道</strong>，把账本以一个 JSON 文件存放在你自己的私有仓库中。
       需要 GitHub Personal Access Token（建议 Fine-grained，仅授权仓库读写）。
     </p>
     <label class="field">
@@ -444,7 +583,7 @@ async function delRecurring() {
       <button class="btn btn--ico" @click="loadSample"><AppIcon name="eye" :size="15" />载入示例数据</button>
       <button class="btn btn--danger btn--ico" @click="doClear"><AppIcon name="trash" :size="15" />清空账目</button>
     </div>
-    <p class="hint">数据保存在浏览器 localStorage，清除浏览器数据前请先同步或导出备份。</p>
+    <p class="hint">可随时导出备份文件留存，或导入备份恢复。</p>
   </section>
 
   <!-- 外观 -->
@@ -700,5 +839,12 @@ async function delRecurring() {
 .icon-picker__hint { color: var(--text-faint); font-size: 12px; margin-top: 6px; }
 
 .btn--on { border-color: var(--gold-line); color: var(--gold); background: var(--gold-soft); }
+.row-line__icon--avatar { width: auto; height: auto; background: none; border: 0; }
+.account-name { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.account-bio { color: var(--text-faint); font-style: italic; }
+.cloud-route { margin-top: 14px; }
+.cloud-route__custom { margin-top: 8px; }
+.cloud-route__custom .input { flex: 1; min-width: 200px; }
+.cloud-route__note { margin: 10px 0 0; }
 .about { text-align: center; color: var(--text-faint); font-size: 13px; letter-spacing: 3px; margin: 34px 0 6px; }
 </style>

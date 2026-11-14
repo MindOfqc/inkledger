@@ -362,8 +362,8 @@ boot()
                 :admin="cloudUser?.isAdmin"
                 :crown="false"
               />
-              <span class="masthead__reader-name">{{ meLabel() }}</span>
               <span v-if="cloudUser?.isAdmin" class="badge-admin"><AppIcon name="crown" :size="11" />主编</span>
+              <span class="masthead__reader-name">{{ meLabel() }}</span>
             </button>
           </span>
         </div>

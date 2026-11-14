@@ -374,8 +374,8 @@ async function delRecurring() {
         </span>
         <span class="row-line__body">
           <b class="account-name">
-            {{ cloudUser.nickname || cloudUser.email || '账号' }}
             <span v-if="cloudUser.isAdmin" class="badge-admin"><AppIcon name="crown" :size="11" />主编</span>
+            {{ cloudUser.nickname || cloudUser.email || '账号' }}
           </b>
           <small v-if="cloudUser.nickname && cloudUser.email">{{ cloudUser.email }}</small>
           <small v-if="cloudUser.bio" class="account-bio">{{ cloudUser.bio }}</small>

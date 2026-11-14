@@ -32,6 +32,7 @@
   --text-faint: #a18c66;
   --gold: #ec9a3c;
   --gold-deep: #d07a20;
+  --gold-hi: #ffe6b4;
   --gold-soft: rgba(224, 138, 42, 0.14);
   --gold-line: rgba(190, 110, 30, 0.45);
   --accent-ink: #a85a10;
@@ -70,6 +71,7 @@
   --text-faint: #93805f;
   --gold: #f2a54a;
   --gold-deep: #d9822a;
+  --gold-hi: #ffdda6;
   --gold-soft: rgba(242, 165, 74, 0.15);
   --gold-line: rgba(242, 165, 74, 0.4);
   --accent-ink: #f2a54a;
@@ -739,26 +741,83 @@ body::before {
   .page-head__cat { width: 62px; }
 }
 
-/* —— 管理员身份徽标：金箔小章 —— */
+/* —— 管理员身份徽标：会扫光的金箔印章 —— */
 .badge-admin {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   flex: none;
-  padding: 1px 7px 1px 5px;
+  padding: 2px 10px 2px 6px;
   border-radius: 999px;
   border: 1px solid var(--gold-deep);
-  background: linear-gradient(135deg, var(--gold), var(--gold-deep));
+  background: linear-gradient(135deg, var(--gold-hi) 0%, var(--gold) 40%, var(--gold-deep) 76%, var(--gold) 100%);
   color: #33230e;
   font-family: var(--font-serif);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 800;
-  letter-spacing: 1px;
-  line-height: 1.7;
+  letter-spacing: 1.2px;
+  line-height: 1.6;
   white-space: nowrap;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 1px 3px rgba(160, 90, 20, 0.3);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(120, 60, 10, 0.28),
+    0 1px 3px rgba(160, 90, 20, 0.35),
+    0 0 10px var(--gold-soft);
 }
-.badge-admin--lg { font-size: 12px; padding: 2px 10px 2px 7px; }
+/* 扫光只在章面内掠过，掠完歇一会儿——不做整屏明暗呼吸 */
+.badge-admin::before {
+  content: '';
+  position: absolute;
+  top: -25%;
+  bottom: -25%;
+  left: -55%;
+  width: 48%;
+  z-index: -1;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+  transform: skewX(-18deg);
+  animation: badge-sheen 4.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.badge-admin::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  z-index: -1;
+  background: #fffaf0;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  animation: badge-spark 3.4s ease-in-out infinite;
+}
+.badge-admin svg {
+  transform-origin: 50% 85%;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.45));
+  animation: badge-crown 5.2s ease-in-out infinite;
+}
+.badge-admin--lg { font-size: 12.5px; padding: 3px 13px 3px 8px; letter-spacing: 1.6px; }
+.badge-admin--lg::after { width: 6px; height: 6px; top: 2px; right: 4px; }
+
+@keyframes badge-sheen {
+  0% { transform: skewX(-18deg) translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  44% { transform: skewX(-18deg) translateX(330%); opacity: 1; }
+  54%, 100% { transform: skewX(-18deg) translateX(330%); opacity: 0; }
+}
+@keyframes badge-spark {
+  0%, 60%, 100% { opacity: 0; transform: scale(0.35) rotate(0deg); }
+  74% { opacity: 1; transform: scale(1.2) rotate(40deg); }
+  88% { opacity: 0.2; transform: scale(0.7) rotate(80deg); }
+}
+@keyframes badge-crown {
+  0%, 68%, 100% { transform: rotate(0deg); }
+  76% { transform: rotate(-10deg) translateY(-1px); }
+  84% { transform: rotate(8deg); }
+  92% { transform: rotate(-3deg); }
+}
 
 /* —— 空态：打盹的墨墨 + 铅笔批注 —— */
 .empty-state {

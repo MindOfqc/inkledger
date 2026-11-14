@@ -303,8 +303,8 @@ watch(() => cloudUser.id, () => { if (cloudUser.id) load({ silent: true }) })
               </div>
               <div class="msg__main">
                 <div v-if="!row.grouped" class="msg__head">
-                  <b class="msg__name">{{ row.msg.nickname || '匿名读者' }}</b>
                   <span v-if="row.msg.isAdmin" class="badge-admin"><AppIcon name="crown" :size="11" />主编</span>
+                  <b class="msg__name">{{ row.msg.nickname || '匿名读者' }}</b>
                   <span v-if="row.mine" class="msg__self">我</span>
                   <span class="msg__time num">{{ clockOf(row.msg.createdAt) }}</span>
                 </div>
@@ -334,8 +334,8 @@ watch(() => cloudUser.id, () => { if (cloudUser.id) load({ silent: true }) })
       <div class="composer__body">
         <div class="composer__meta">
           <span class="composer__name">
-            {{ cloudUser.nickname || cloudUser.email || '我' }}
             <span v-if="cloudUser.isAdmin" class="badge-admin"><AppIcon name="crown" :size="11" />主编</span>
+            {{ cloudUser.nickname || cloudUser.email || '我' }}
           </span>
           <span class="composer__count num" :class="{ 'composer__count--over': overLimit }">{{ chars }} / {{ MAX_CHARS }}</span>
         </div>
@@ -482,7 +482,8 @@ watch(() => cloudUser.id, () => { if (cloudUser.id) load({ silent: true }) })
 /* 本人：靠右的橘色便签 */
 .msg--mine { flex-direction: row-reverse; }
 .msg--mine .msg__main { align-items: flex-end; }
-.msg--mine .msg__head { flex-direction: row-reverse; }
+/* 靠右对齐但不镜像：金章必须始终排在昵称前面 */
+.msg--mine .msg__head { justify-content: flex-end; }
 .msg--mine .msg__bubble {
   border-radius: 12px 3px 12px 12px;
   border-color: var(--gold-line);

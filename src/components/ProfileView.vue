@@ -244,8 +244,8 @@ const localTxCount = computed(() => store.txs.length)
         <div class="reader-card__id">
           <Avatar :src="avatar" :name="nickname || cloudUser.nickname || cloudUser.email" :size="86" :admin="cloudUser.isAdmin" />
           <div class="reader-card__name">
-            <b class="serif">{{ nickname.trim() || '未署名的读者' }}</b>
             <span v-if="cloudUser.isAdmin" class="badge-admin badge-admin--lg"><AppIcon name="crown" :size="13" />管理员</span>
+            <b class="serif">{{ nickname.trim() || '未署名的读者' }}</b>
             <small>{{ cloudUser.email || '—' }}</small>
           </div>
         </div>
